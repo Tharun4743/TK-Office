@@ -373,12 +373,17 @@ class PptxService {
     final plainText = paragraphs.map((p) => p.plainText).join('\n');
     final firstRun = paragraphs.firstOrNull?.runs.firstOrNull;
 
-    // Determine if this is text-box or shape
+    // Determine if this is text-box or shape.
+    // CRITICAL FIX: Any element with text content MUST be typed as text
+    // so it goes through the rich text renderer. Shapes with both fill AND
+    // text (e.g. coloured title boxes) must also show their text.
     final isTxBox = sp.findAllElements('p:cNvSpPr').any(
       (e) => e.getAttribute('txBox') == '1',
     );
     final hasText = paragraphs.any((p) => p.plainText.isNotEmpty);
-    final type = (hasText || isTxBox) && fillColor == null
+    // Always use text type when there is text content so it renders correctly.
+    // The text renderer already handles fillColor for the background.
+    final type = (hasText || isTxBox)
         ? SlideElementType.text
         : SlideElementType.shape;
 

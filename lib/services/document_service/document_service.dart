@@ -42,10 +42,17 @@ class DocumentService {
     if (ext == '.docx') {
       delta = await DocxService.importDocx(filePath);
     } else if (ext == '.doc') {
+      // Try parsing as DOCX first (some .doc files are actually OOXML)
       delta = await DocxService.importDocx(filePath);
       final ops = delta.toList();
-      if (ops.isNotEmpty && ops.first.data is String && (ops.first.data as String).startsWith('Error reading DOCX file')) {
-        delta = Delta()..insert('This appears to be a legacy binary .doc file which is not supported offline. Please open a .docx file or convert it first.\n');
+      final firstText = ops.isNotEmpty && ops.first.data is String ? (ops.first.data as String) : '';
+      // DocxService returns these strings when it cannot parse binary .doc
+      if (firstText.startsWith('Could not read') || firstText.startsWith('Error reading DOCX')) {
+        delta = Delta()..insert(
+          '⚠️  Legacy Binary Format\n\n'
+          'This file ("${p.basename(filePath)}") is a legacy binary .doc file '
+          'and cannot be opened offline. Please convert it to .docx format first.\n',
+        );
       }
     } else if (ext == '.txt') {
       delta = await RtfTxtService.importTxt(filePath);

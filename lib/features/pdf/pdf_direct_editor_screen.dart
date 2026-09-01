@@ -47,6 +47,9 @@ class _PdfDirectEditorScreenState extends State<PdfDirectEditorScreen> {
   String _searchQuery = '';
   final List<Rect> _searchResults = [];
 
+  // Replace-Text tap mode
+  bool _replaceTextMode = false;
+
   @override
   void initState() {
     super.initState();
@@ -167,7 +170,7 @@ class _PdfDirectEditorScreenState extends State<PdfDirectEditorScreen> {
       text: text,
       fontSize: 16,
       textColor: Colors.black,
-      backgroundColor: Colors.white, // Whiteout background to cover existing printed text
+      backgroundColor: Colors.white,
       isBold: false,
     );
 
@@ -177,6 +180,183 @@ class _PdfDirectEditorScreenState extends State<PdfDirectEditorScreen> {
     });
 
     _showEditTextDialog(newElem);
+  }
+
+  // ── Replace-Text: tap on page → whiteout + text overlay at that spot
+  void _onPageTapForReplaceText(TapDownDetails details, Offset canvasOffset) {
+    if (!_replaceTextMode) return;
+    final tapX = details.localPosition.dx - canvasOffset.dx;
+    final tapY = details.localPosition.dy - canvasOffset.dy;
+    _showReplaceTextDialog(tapX, tapY);
+  }
+
+  void _showReplaceTextDialog(double x, double y) {
+    final textController = TextEditingController();
+    double fontSize = 14;
+    bool isBold = false;
+    bool isItalic = false;
+    Color textColor = Colors.black;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return AlertDialog(
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade100,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.find_replace_rounded, color: Colors.orange.shade800, size: 20),
+                  ),
+                  const SizedBox(width: 10),
+                  const Text('Replace Text', style: TextStyle(fontWeight: FontWeight.bold)),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Type the new text. A white cover will automatically be placed under it to hide the original.',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: textController,
+                      autofocus: true,
+                      maxLines: 4,
+                      decoration: const InputDecoration(
+                        labelText: 'Replacement Text',
+                        border: OutlineInputBorder(),
+                        hintText: 'Enter new text here...',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        const Text('Size:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                        Expanded(
+                          child: Slider(
+                            value: fontSize,
+                            min: 8,
+                            max: 36,
+                            divisions: 28,
+                            label: '${fontSize.round()} pt',
+                            onChanged: (v) => setModalState(() => fontSize = v),
+                          ),
+                        ),
+                        Text('${fontSize.round()} pt', style: const TextStyle(fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        FilterChip(
+                          label: const Text('Bold', style: TextStyle(fontWeight: FontWeight.bold)),
+                          selected: isBold,
+                          onSelected: (v) => setModalState(() => isBold = v),
+                        ),
+                        FilterChip(
+                          label: const Text('Italic', style: TextStyle(fontStyle: FontStyle.italic)),
+                          selected: isItalic,
+                          onSelected: (v) => setModalState(() => isItalic = v),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _buildColorDot(Colors.black, textColor, (c) => setModalState(() => textColor = c)),
+                        _buildColorDot(Colors.blue.shade800, textColor, (c) => setModalState(() => textColor = c)),
+                        _buildColorDot(Colors.red.shade800, textColor, (c) => setModalState(() => textColor = c)),
+                        _buildColorDot(Colors.green.shade800, textColor, (c) => setModalState(() => textColor = c)),
+                        _buildColorDot(Colors.orange.shade800, textColor, (c) => setModalState(() => textColor = c)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton.icon(
+                  icon: const Icon(Icons.check_circle_outline_rounded, size: 18),
+                  label: const Text('Place on PDF'),
+                  style: FilledButton.styleFrom(backgroundColor: Colors.orange.shade700),
+                  onPressed: () {
+                    final replacement = textController.text.trim();
+                    if (replacement.isEmpty) {
+                      Navigator.pop(ctx);
+                      return;
+                    }
+                    _pushUndo();
+                    final ts = DateTime.now().millisecondsSinceEpoch;
+                    // Estimate size based on text length and font size
+                    final estWidth = (replacement.length * fontSize * 0.6 + 16).clamp(80.0, _pageWidth - x);
+                    final lineCount = replacement.split('\n').length;
+                    final estHeight = (lineCount * fontSize * 1.4 + 12).clamp(30.0, _pageHeight - y);
+
+                    // 1. Whiteout box to hide original text
+                    final whiteout = PdfElement(
+                      id: 'wo_$ts',
+                      pageNumber: _currentPage,
+                      type: PdfElementType.whiteout,
+                      x: x,
+                      y: y,
+                      width: estWidth,
+                      height: estHeight,
+                      whiteoutColor: Colors.white,
+                    );
+
+                    // 2. New text overlay
+                    final textElem = PdfElement(
+                      id: 'rt_$ts',
+                      pageNumber: _currentPage,
+                      type: PdfElementType.text,
+                      x: x,
+                      y: y,
+                      width: estWidth,
+                      height: estHeight,
+                      text: replacement,
+                      fontSize: fontSize,
+                      textColor: textColor,
+                      isBold: isBold,
+                      isItalic: isItalic,
+                      backgroundColor: null,
+                    );
+
+                    setState(() {
+                      _elements.add(whiteout);
+                      _elements.add(textElem);
+                      _selectedElementId = textElem.id;
+                      _replaceTextMode = false; // exit replace mode after placing
+                    });
+                    Navigator.pop(ctx);
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('✅ Text placed! Drag to reposition. Resize with the blue handle.'),
+                        duration: Duration(seconds: 3),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   void _addWhiteoutBox() {
@@ -659,41 +839,80 @@ class _PdfDirectEditorScreenState extends State<PdfDirectEditorScreen> {
                             scrollDirection: Axis.horizontal,
                             child: Padding(
                               padding: const EdgeInsets.all(12),
-                              child: Container(
-                                width: _pageWidth,
-                                height: _pageHeight,
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  boxShadow: const [
-                                    BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 4)),
-                                  ],
-                                ),
-                                child: Stack(
-                                  children: [
-                                    // 1. PDF Page Rendered Image
-                                    Image.memory(
-                                      _renderedPageBytes!,
-                                      width: _pageWidth,
-                                      height: _pageHeight,
-                                      fit: BoxFit.fill,
-                                    ),
+                              child: GestureDetector(
+                                onTapDown: _replaceTextMode
+                                    ? (details) => _onPageTapForReplaceText(details, Offset.zero)
+                                    : null,
+                                child: Container(
+                                  width: _pageWidth,
+                                  height: _pageHeight,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    border: _replaceTextMode
+                                        ? Border.all(color: Colors.orange.shade600, width: 2.5)
+                                        : null,
+                                    boxShadow: const [
+                                      BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 4)),
+                                    ],
+                                  ),
+                                  child: Stack(
+                                    children: [
+                                      // 1. PDF Page Rendered Image
+                                      Image.memory(
+                                        _renderedPageBytes!,
+                                        width: _pageWidth,
+                                        height: _pageHeight,
+                                        fit: BoxFit.fill,
+                                      ),
 
-                                    // 2. Search Highlights
-                                    ..._searchResults.map((rect) {
-                                      return Positioned(
-                                        left: rect.left,
-                                        top: rect.top,
-                                        width: rect.width,
-                                        height: rect.height,
-                                        child: Container(
-                                          color: Colors.yellow.withAlpha(120),
+                                      // 2. Replace-Text mode crosshair hint
+                                      if (_replaceTextMode)
+                                        Positioned.fill(
+                                          child: IgnorePointer(
+                                            child: Container(
+                                              color: Colors.orange.withAlpha(15),
+                                              child: Center(
+                                                child: Column(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    Icon(Icons.touch_app_rounded, color: Colors.orange.shade700, size: 48),
+                                                    const SizedBox(height: 8),
+                                                    Container(
+                                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.orange.shade700,
+                                                        borderRadius: BorderRadius.circular(20),
+                                                      ),
+                                                      child: const Text(
+                                                        'Tap where you want to replace text',
+                                                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          ),
                                         ),
-                                      );
-                                    }),
 
-                                    // 3. Editable Elements Layer
-                                    ...currentElements.map((elem) => _buildEditableElement(elem)),
-                                  ],
+                                      // 3. Search Highlights
+                                      ..._searchResults.map((rect) {
+                                        return Positioned(
+                                          left: rect.left,
+                                          top: rect.top,
+                                          width: rect.width,
+                                          height: rect.height,
+                                          child: Container(
+                                            color: Colors.yellow.withAlpha(120),
+                                          ),
+                                        );
+                                      }),
+
+                                      // 4. Editable Elements Layer (hidden during replace-text mode)
+                                      if (!_replaceTextMode)
+                                        ...currentElements.map((elem) => _buildEditableElement(elem)),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
@@ -719,6 +938,29 @@ class _PdfDirectEditorScreenState extends State<PdfDirectEditorScreen> {
                           scrollDirection: Axis.horizontal,
                           child: Row(
                             children: [
+                              // Replace Text (primary action)
+                              ElevatedButton.icon(
+                                icon: Icon(
+                                  _replaceTextMode ? Icons.close_rounded : Icons.find_replace_rounded,
+                                  size: 18,
+                                  color: _replaceTextMode ? Colors.white : Colors.orange.shade800,
+                                ),
+                                label: Text(
+                                  _replaceTextMode ? 'Cancel Replace' : 'Replace Text',
+                                  style: TextStyle(
+                                    color: _replaceTextMode ? Colors.white : Colors.orange.shade800,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: _replaceTextMode ? Colors.orange.shade700 : Colors.orange.shade50,
+                                  side: BorderSide(color: Colors.orange.shade400),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                ),
+                                onPressed: () => setState(() => _replaceTextMode = !_replaceTextMode),
+                              ),
+                              const SizedBox(width: 8),
+
                               // Add Text
                               TextButton.icon(
                                 icon: const Icon(Icons.text_fields_rounded, size: 18),
