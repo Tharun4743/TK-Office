@@ -7,10 +7,14 @@ class RtfTxtService {
     if (!await file.exists()) {
       return Delta()..insert('\n');
     }
-    final text = await file.readAsString();
-    final delta = Delta();
-    delta.insert(text.endsWith('\n') ? text : '$text\n');
-    return delta;
+    try {
+      final text = await file.readAsString();
+      final delta = Delta();
+      delta.insert(text.endsWith('\n') ? text : '$text\n');
+      return delta;
+    } catch (e) {
+      return Delta()..insert('Error: This document cannot be read as plain text. It may be a binary file or an unsupported format.\n');
+    }
   }
 
   static String exportToPlainText(Delta delta) {

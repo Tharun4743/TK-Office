@@ -41,6 +41,12 @@ class DocumentService {
 
     if (ext == '.docx') {
       delta = await DocxService.importDocx(filePath);
+    } else if (ext == '.doc') {
+      delta = await DocxService.importDocx(filePath);
+      final ops = delta.toList();
+      if (ops.isNotEmpty && ops.first.data is String && (ops.first.data as String).startsWith('Error reading DOCX file')) {
+        delta = Delta()..insert('This appears to be a legacy binary .doc file which is not supported offline. Please open a .docx file or convert it first.\n');
+      }
     } else if (ext == '.txt') {
       delta = await RtfTxtService.importTxt(filePath);
     } else if (ext == '.json') {
