@@ -8,6 +8,9 @@
   <a href="https://github.com/Tharun4743/TK-Office/releases/latest">
     <img src="https://img.shields.io/github/v/release/Tharun4743/TK-Office?style=for-the-badge&color=blue" alt="Latest Release" />
   </a>
+  <a href="LICENSE">
+    <img src="https://img.shields.io/badge/License-All%20Rights%20Reserved-critical?style=for-the-badge" alt="License" />
+  </a>
 </p>
 
 > **"Your Documents. Your Device."**  
@@ -17,11 +20,11 @@
 
 ## 🚀 Download & Install
 
-Download the latest production release APK directly from GitHub Releases:
+Download the production release APK directly from GitHub Releases:
 
-[![Download APK](https://img.shields.io/badge/Download-TK--Office--v1.0.0.apk-2ea44f?style=for-the-badge&logo=android&logoColor=white)](https://github.com/Tharun4743/TK-Office/releases/latest)
+[![Download APK](https://img.shields.io/badge/Direct%20Download-APK%20(v1.0.0)-2ea44f?style=for-the-badge&logo=android&logoColor=white)](https://github.com/Tharun4743/TK-Office/releases/download/v1.0.0/app-release.apk)
 
-1. Download **`app-release.apk`** from [Releases](https://github.com/Tharun4743/TK-Office/releases/latest).
+1. Download **[`app-release.apk`](https://github.com/Tharun4743/TK-Office/releases/download/v1.0.0/app-release.apk)** from Releases.
 2. Open the APK on your Android device and tap **Install**.
 3. Works completely in **Airplane Mode** — zero internet connection required.
 
@@ -84,6 +87,16 @@ flutter test
 # Build production release APK
 flutter build apk --release
 ```
+
+---
+
+## 📄 License & Permissions
+
+**Copyright © 2026 Tharun Kumar. All Rights Reserved.**
+
+This project and its source code are proprietary. **No person or entity may copy, reproduce, modify, distribute, publish, or use this code or app without explicit prior written permission from Tharun Kumar.**
+
+For permissions or business inquiries: [tharunkumark42007@gmail.com](mailto:tharunkumark42007@gmail.com)
 
 ---
 
