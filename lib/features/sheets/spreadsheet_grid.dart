@@ -183,18 +183,28 @@ class _SpreadsheetGridState extends State<SpreadsheetGrid> {
                           height: cellHeight,
                           child: Row(
                             children: List.generate(sheet.columnCount, (c) {
+                              final cell = sheet.getCell(r, c);
+
+                              // Skip cells that are hidden under a merged master
+                              if (cell.isMergedChild) {
+                                return const SizedBox.shrink();
+                              }
+
                               final isSelected = r == widget.controller.selectedRow &&
                                   c == widget.controller.selectedCol;
-                              final cell = sheet.getCell(r, c);
                               final displayText = cell.calculatedValue.isNotEmpty
                                   ? cell.calculatedValue
                                   : cell.value;
 
+                              // Merged cell spans multiple columns/rows
+                              final spanW = cellWidth * cell.colSpan;
+                              final spanH = cellHeight * cell.rowSpan;
+
                               return GestureDetector(
                                 onTap: () => widget.controller.selectCell(r, c),
                                 child: Container(
-                                  width: cellWidth,
-                                  height: cellHeight,
+                                  width: spanW,
+                                  height: spanH,
                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                                   alignment: _getAlignment(cell.align),
                                   decoration: BoxDecoration(
@@ -207,6 +217,10 @@ class _SpreadsheetGridState extends State<SpreadsheetGrid> {
                                             right: BorderSide(color: gridBorderColor, width: 0.8),
                                             bottom: BorderSide(color: gridBorderColor, width: 0.8),
                                           ),
+                                    // Thicker border for merged cells to show the merge visually
+                                    boxShadow: cell.colSpan > 1 || cell.rowSpan > 1
+                                        ? [BoxShadow(color: AppTheme.sheetGreen.withAlpha(60), blurRadius: 0, spreadRadius: 1)]
+                                        : null,
                                   ),
                                   child: Text(
                                     displayText,
@@ -216,7 +230,7 @@ class _SpreadsheetGridState extends State<SpreadsheetGrid> {
                                       fontStyle: cell.isItalic ? FontStyle.italic : FontStyle.normal,
                                       color: cell.textColor,
                                     ),
-                                    maxLines: 1,
+                                    maxLines: cell.rowSpan > 1 ? cell.rowSpan * 2 : 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),

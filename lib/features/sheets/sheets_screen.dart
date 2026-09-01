@@ -262,77 +262,79 @@ class _SheetsViewState extends State<_SheetsView>
     final wb = controller.workbook;
     if (wb == null) return const SizedBox.shrink();
 
-    return Container(
-      // Reduced from 44 → 38 to move the bar up slightly
-      height: 38,
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF0F172A) : const Color(0xFFE2E8F0),
-        border: Border(
-          top: BorderSide(
-            color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
-          ),
-        ),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: wb.sheets.length,
-              itemBuilder: (ctx, index) {
-                final sheet = wb.sheets[index];
-                final isActive = index == wb.activeSheetIndex;
-
-                return GestureDetector(
-                  onTap: () => controller.switchSheet(index),
-                  onLongPress: () => _showSheetOptions(context, controller, index, sheet.name),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: isActive
-                          ? (isDark ? const Color(0xFF1E293B) : Colors.white)
-                          : Colors.transparent,
-                      border: Border(
-                        top: BorderSide(
-                          color: isActive ? AppTheme.sheetGreen : Colors.transparent,
-                          width: 3,
-                        ),
-                        right: BorderSide(
-                          color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
-                          width: 1,
-                        ),
-                      ),
-                    ),
-                    child: Text(
-                      sheet.name,
-                      style: TextStyle(
-                        fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-                        fontSize: 13,
-                        color: isActive ? AppTheme.sheetGreen : null,
-                      ),
-                    ),
-                  ),
-                );
-              },
+    return SafeArea(
+      top: false,
+      child: Container(
+        height: 44,
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF0F172A) : const Color(0xFFE2E8F0),
+          border: Border(
+            top: BorderSide(
+              color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
             ),
           ),
-          IconButton(
-            icon: const Icon(Icons.add_rounded, size: 20),
-            tooltip: 'Add Sheet',
-            onPressed: () async {
-              final newName = await TKDialogs.showNameInputDialog(
-                context: context,
-                title: 'Add New Sheet',
-                initialValue: 'Sheet${wb.sheets.length + 1}',
-                actionLabel: 'Add',
-              );
-              if (newName != null) {
-                controller.addSheet(newName);
-              }
-            },
-          ),
-        ],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: wb.sheets.length,
+                itemBuilder: (ctx, index) {
+                  final sheet = wb.sheets[index];
+                  final isActive = index == wb.activeSheetIndex;
+
+                  return GestureDetector(
+                    onTap: () => controller.switchSheet(index),
+                    onLongPress: () => _showSheetOptions(context, controller, index, sheet.name),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: isActive
+                            ? (isDark ? const Color(0xFF1E293B) : Colors.white)
+                            : Colors.transparent,
+                        border: Border(
+                          top: BorderSide(
+                            color: isActive ? AppTheme.sheetGreen : Colors.transparent,
+                            width: 3,
+                          ),
+                          right: BorderSide(
+                            color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                            width: 1,
+                          ),
+                        ),
+                      ),
+                      child: Text(
+                        sheet.name,
+                        style: TextStyle(
+                          fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                          fontSize: 13,
+                          color: isActive ? AppTheme.sheetGreen : null,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.add_rounded, size: 20),
+              tooltip: 'Add Sheet',
+              onPressed: () async {
+                final newName = await TKDialogs.showNameInputDialog(
+                  context: context,
+                  title: 'Add New Sheet',
+                  initialValue: 'Sheet${wb.sheets.length + 1}',
+                  actionLabel: 'Add',
+                );
+                if (newName != null) {
+                  controller.addSheet(newName);
+                }
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

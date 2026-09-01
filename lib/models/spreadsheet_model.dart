@@ -10,6 +10,9 @@ class CellModel {
   Color? bgColor;
   TextAlign align;
   String numberFormat;
+  int colSpan;      // how many columns this cell spans (1 = no merge)
+  int rowSpan;      // how many rows this cell spans (1 = no merge)
+  bool isMergedChild; // true = this cell is hidden under a merged master
 
   CellModel({
     this.value = '',
@@ -21,6 +24,9 @@ class CellModel {
     this.bgColor,
     this.align = TextAlign.left,
     this.numberFormat = 'General',
+    this.colSpan = 1,
+    this.rowSpan = 1,
+    this.isMergedChild = false,
   }) : calculatedValue = calculatedValue ?? value;
 
   CellModel copyWith({
@@ -33,6 +39,9 @@ class CellModel {
     Color? bgColor,
     TextAlign? align,
     String? numberFormat,
+    int? colSpan,
+    int? rowSpan,
+    bool? isMergedChild,
   }) {
     return CellModel(
       value: value ?? this.value,
@@ -44,6 +53,9 @@ class CellModel {
       bgColor: bgColor ?? this.bgColor,
       align: align ?? this.align,
       numberFormat: numberFormat ?? this.numberFormat,
+      colSpan: colSpan ?? this.colSpan,
+      rowSpan: rowSpan ?? this.rowSpan,
+      isMergedChild: isMergedChild ?? this.isMergedChild,
     );
   }
 }
