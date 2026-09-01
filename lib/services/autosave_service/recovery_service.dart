@@ -28,15 +28,4 @@ class RecoveryService {
     }
     return recovered;
   }
-
-  static Future<void> saveEmergencyRecoveryCopy({
-    required String baseName,
-    required String extension,
-    required List<int> bytes,
-  }) async {
-    final recoveryDir = await LocalStorageService.instance.getRecoveryDirectory();
-    final sanitized = FileUtils.sanitizeFileName(baseName);
-    final recoveryFile = File(p.join(recoveryDir.path, '${sanitized}_recovery$extension'));
-    await recoveryFile.writeAsBytes(bytes);
-  }
 }

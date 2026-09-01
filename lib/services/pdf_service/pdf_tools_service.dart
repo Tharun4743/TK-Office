@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'package:csv/csv.dart';
 import 'package:dart_quill_delta/dart_quill_delta.dart';
 import 'package:excel/excel.dart' as xl;
-import 'package:flutter/material.dart' show Color, Rect, Offset;
+import 'package:flutter/material.dart' show Rect, Offset;
 import 'package:image/image.dart' as img;
 import 'package:path/path.dart' as p;
 import 'package:pdf/pdf.dart';
@@ -245,7 +245,6 @@ class PdfToolsService {
     required String outputPath,
     int imageQuality = 60, // 0-100
   }) async {
-    final originalBytes = await File(inputPath).readAsBytes();
     final px.PdfDocument pdfDoc = await px.PdfDocument.openFile(inputPath);
     final pw.Document compressedDoc = pw.Document();
 

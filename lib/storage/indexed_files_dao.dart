@@ -28,6 +28,22 @@ class IndexedFilesDao {
     await db.execute('CREATE INDEX IF NOT EXISTS idx_fav ON $tableName(isFavorite)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_tag ON $tableName(tag)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_mod ON $tableName(modifiedDate DESC)');
+
+    // Purge any previously indexed image files or trashed files from SQLite
+    try {
+      final imagePlaceholders = FileUtils.imageExtensions.map((e) => "'$e'").join(',');
+      await db.execute('''
+        DELETE FROM $tableName 
+        WHERE LOWER(extension) IN ($imagePlaceholders) 
+           OR name LIKE '.trashed-%' 
+           OR name LIKE '.%' 
+           OR path LIKE '%.trashed-%' 
+           OR path LIKE '%/.Trash/%' 
+           OR path LIKE '%\\\\.trash\\\\%' 
+           OR path LIKE '%\\\\.trashed%' 
+           OR category = 'other'
+      ''');
+    } catch (_) {}
   }
 
   Future<void> batchInsertOrUpdate(List<LocalFileInfo> files) async {
@@ -36,6 +52,26 @@ class IndexedFilesDao {
     final batch = db.batch();
 
     for (final file in files) {
+      final ext = file.extension.toLowerCase();
+      final name = file.name.toLowerCase();
+      final path = file.path.toLowerCase();
+
+      // Strictly ignore images, trashed files, hidden files, and unsupported categories
+      if (name.startsWith('.') ||
+          name.startsWith('.trashed-') ||
+          path.contains('/.trash/') ||
+          path.contains('/.trashed') ||
+          path.contains('\\.trash\\') ||
+          path.contains('\\.trashed')) {
+        continue;
+      }
+      if (FileUtils.isImageFile(file.path) || file.category == DocumentCategory.other) {
+        continue;
+      }
+      if (!FileUtils.documentExtensions.contains(ext)) {
+        continue;
+      }
+
       batch.insert(
         tableName,
         {
@@ -66,28 +102,39 @@ class IndexedFilesDao {
     final db = await DatabaseHelper.instance.database;
     await initTable();
 
-    String whereClause = '';
+    final List<String> whereClauses = [];
     final List<dynamic> whereArgs = [];
 
+    // Always exclude trashed and hidden files
+    whereClauses.add("name NOT LIKE '.trashed-%'");
+    whereClauses.add("name NOT LIKE '.%'");
+    whereClauses.add("path NOT LIKE '%.trashed-%'");
+    whereClauses.add("path NOT LIKE '%/.Trash/%'");
+
+    // Always exclude all image extensions
+    final imagePlaceholders = FileUtils.imageExtensions.map((_) => '?').join(',');
+    whereClauses.add("LOWER(extension) NOT IN ($imagePlaceholders)");
+    whereArgs.addAll(FileUtils.imageExtensions);
+
     if (category != null) {
-      whereClause += 'category = ?';
+      whereClauses.add('category = ?');
       whereArgs.add(category.name);
+    } else {
+      // For "All Files", only query supported document categories
+      whereClauses.add("category IN ('document', 'spreadsheet', 'presentation', 'pdf')");
     }
 
     if (tag != null && tag.isNotEmpty) {
-      if (whereClause.isNotEmpty) whereClause += ' AND ';
-      whereClause += 'tag = ?';
+      whereClauses.add('tag = ?');
       whereArgs.add(tag);
     }
 
     if (onlyFavorites == true) {
-      if (whereClause.isNotEmpty) whereClause += ' AND ';
-      whereClause += 'isFavorite = 1';
+      whereClauses.add('isFavorite = 1');
     }
 
     if (searchQuery != null && searchQuery.trim().isNotEmpty) {
-      if (whereClause.isNotEmpty) whereClause += ' AND ';
-      whereClause += 'name LIKE ?';
+      whereClauses.add('name LIKE ?');
       whereArgs.add('%${searchQuery.trim()}%');
     }
 
@@ -107,9 +154,11 @@ class IndexedFilesDao {
         break;
     }
 
+    final whereString = whereClauses.isNotEmpty ? whereClauses.join(' AND ') : null;
+
     final List<Map<String, dynamic>> maps = await db.query(
       tableName,
-      where: whereClause.isNotEmpty ? whereClause : null,
+      where: whereString,
       whereArgs: whereArgs.isNotEmpty ? whereArgs : null,
       orderBy: orderBy,
       limit: 1000,
@@ -193,11 +242,16 @@ class IndexedFilesDao {
   }
 
   Future<int> countByCategory(DocumentCategory category) async {
+    if (category == DocumentCategory.other) return 0;
     final db = await DatabaseHelper.instance.database;
     await initTable();
+    final imagePlaceholders = FileUtils.imageExtensions.map((_) => '?').join(',');
     final result = await db.rawQuery(
-      'SELECT COUNT(*) as cnt FROM $tableName WHERE category = ?',
-      [category.name],
+      'SELECT COUNT(*) as cnt FROM $tableName WHERE category = ? '
+      "AND name NOT LIKE '.trashed-%' AND name NOT LIKE '.%' "
+      "AND path NOT LIKE '%.trashed-%' AND path NOT LIKE '%/.Trash/%' "
+      "AND LOWER(extension) NOT IN ($imagePlaceholders)",
+      [category.name, ...FileUtils.imageExtensions],
     );
     return Sqflite.firstIntValue(result) ?? 0;
   }
@@ -205,7 +259,14 @@ class IndexedFilesDao {
   Future<int> getTotalCount() async {
     final db = await DatabaseHelper.instance.database;
     await initTable();
-    final result = await db.rawQuery('SELECT COUNT(*) as cnt FROM $tableName');
+    final imagePlaceholders = FileUtils.imageExtensions.map((_) => '?').join(',');
+    final result = await db.rawQuery(
+      "SELECT COUNT(*) as cnt FROM $tableName WHERE category IN ('document', 'spreadsheet', 'presentation', 'pdf') "
+      "AND name NOT LIKE '.trashed-%' AND name NOT LIKE '.%' "
+      "AND path NOT LIKE '%.trashed-%' AND path NOT LIKE '%/.Trash/%' "
+      "AND LOWER(extension) NOT IN ($imagePlaceholders)",
+      FileUtils.imageExtensions,
+    );
     return Sqflite.firstIntValue(result) ?? 0;
   }
 

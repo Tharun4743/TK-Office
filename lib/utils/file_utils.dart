@@ -12,6 +12,63 @@ enum DocumentCategory {
 }
 
 class FileUtils {
+  static const List<String> documentExtensions = [
+    '.pdf',
+    '.doc',
+    '.docx',
+    '.odt',
+    '.txt',
+    '.rtf',
+    '.xls',
+    '.xlsx',
+    '.ods',
+    '.csv',
+    '.ppt',
+    '.pptx',
+    '.odp',
+  ];
+
+  static const List<String> imageExtensions = [
+    '.jpg',
+    '.jpeg',
+    '.png',
+    '.webp',
+    '.gif',
+    '.bmp',
+    '.heic',
+    '.heif',
+    '.tiff',
+    '.tif',
+    '.svg',
+    '.ico',
+    '.raw',
+    '.cr2',
+    '.nef',
+    '.arw',
+    '.dng',
+  ];
+
+  static bool isImageFile(String filePath) {
+    final ext = p.extension(filePath).toLowerCase();
+    return imageExtensions.contains(ext);
+  }
+
+  static bool isDocumentFile(String filePath) {
+    final ext = p.extension(filePath).toLowerCase();
+    return documentExtensions.contains(ext);
+  }
+
+  static bool isTrashedFile(String filePath) {
+    final name = p.basename(filePath).toLowerCase();
+    final path = filePath.toLowerCase();
+    return name.startsWith('.trashed-') ||
+        name.startsWith('.') ||
+        path.contains('/.trash/') ||
+        path.contains('/.trashed') ||
+        path.contains('\\.trash\\') ||
+        path.contains('\\.trashed');
+  }
+
   static DocumentCategory getCategory(String filePath) {
     final ext = p.extension(filePath).toLowerCase();
     switch (ext) {

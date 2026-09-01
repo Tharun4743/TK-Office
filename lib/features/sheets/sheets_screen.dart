@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/app_theme.dart';
@@ -28,8 +29,86 @@ class SheetsScreen extends StatelessWidget {
   }
 }
 
-class _SheetsView extends StatelessWidget {
+// ─────────────────────────────────────────────
+// Converted to StatefulWidget to manage the
+// auto-hide timer and slide animation for the
+// formatting toolbar (navigation bar).
+// ─────────────────────────────────────────────
+class _SheetsView extends StatefulWidget {
   const _SheetsView();
+
+  @override
+  State<_SheetsView> createState() => _SheetsViewState();
+}
+
+class _SheetsViewState extends State<_SheetsView>
+    with SingleTickerProviderStateMixin {
+  // ── Animation ──────────────────────────────
+  late final AnimationController _slideCtrl;
+  late final Animation<double> _slideAnim;
+
+  // ── Auto-hide timer ─────────────────────────
+  Timer? _hideTimer;
+  static const Duration _autoHideDelay = Duration(seconds: 3);
+  static const Duration _animDuration = Duration(milliseconds: 220);
+
+  bool _toolbarVisible = true;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _slideCtrl = AnimationController(
+      vsync: this,
+      duration: _animDuration,
+      value: 1.0, // fully visible on open
+    );
+
+    _slideAnim = CurvedAnimation(
+      parent: _slideCtrl,
+      curve: Curves.easeInOut,
+    );
+
+    // Start the 3-second countdown immediately on open
+    _scheduleHide();
+  }
+
+  @override
+  void dispose() {
+    _hideTimer?.cancel();
+    _slideCtrl.dispose();
+    super.dispose();
+  }
+
+  // ── Timer helpers ────────────────────────────
+
+  /// Schedules a hide after [_autoHideDelay] if not already running.
+  void _scheduleHide() {
+    _hideTimer?.cancel();
+    _hideTimer = Timer(_autoHideDelay, _hideToolbar);
+  }
+
+  /// Called whenever the user interacts with the toolbar area —
+  /// resets the 3-second countdown.
+  void _onToolbarInteraction() {
+    if (!_toolbarVisible) _showToolbar();
+    _scheduleHide();
+  }
+
+  void _hideToolbar() {
+    if (!mounted || !_toolbarVisible) return;
+    setState(() => _toolbarVisible = false);
+    _slideCtrl.reverse();
+  }
+
+  void _showToolbar() {
+    if (!mounted || _toolbarVisible) return;
+    setState(() => _toolbarVisible = true);
+    _slideCtrl.forward();
+    _scheduleHide();
+  }
+
+  // ─────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -149,15 +228,29 @@ class _SheetsView extends StatelessWidget {
             // Formula Input Bar
             FormulaBar(controller: controller),
 
-            // Spreadsheet 2D Grid
+            // Spreadsheet 2D Grid — expands to fill all available space
+            // (naturally gets bigger when toolbar slides out)
             Expanded(
               child: SpreadsheetGrid(controller: controller),
             ),
 
-            // Formatting Toolbar
-            SheetsToolbar(controller: controller),
+            // ── Auto-hiding Formatting Toolbar ─────────────────────────
+            // Wrapped in GestureDetector so any touch resets the timer.
+            // SizeTransition clips the height from full → 0 smoothly.
+            SizeTransition(
+              sizeFactor: _slideAnim,
+              alignment: Alignment.topCenter, // anchored at top, collapses downward
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onTapDown: (_) => _onToolbarInteraction(),
+                onPanDown: (_) => _onToolbarInteraction(),
+                child: SheetsToolbar(controller: controller),
+              ),
+            ),
 
-            // Sheet Tabs Bottom Bar
+            // ── Sheet Tabs Bar ──────────────────────────────────────────
+            // Height reduced from 44 → 38 to shift it up slightly and
+            // tighten the gap below the grid/toolbar.
             _buildSheetTabBar(context, controller, isDark),
           ],
         ),
@@ -170,7 +263,8 @@ class _SheetsView extends StatelessWidget {
     if (wb == null) return const SizedBox.shrink();
 
     return Container(
-      height: 44,
+      // Reduced from 44 → 38 to move the bar up slightly
+      height: 38,
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF0F172A) : const Color(0xFFE2E8F0),
         border: Border(

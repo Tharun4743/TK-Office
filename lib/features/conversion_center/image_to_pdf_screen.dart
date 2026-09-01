@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
-import '../../models/file_info.dart';
 import '../../services/conversion_service/conversion_service.dart';
 import '../../services/pdf_service/pdf_tools_service.dart';
 import '../../shared/widgets/save_file_dialog.dart';

@@ -60,7 +60,7 @@ class ConversionRegistry {
       fromFormat: 'PDF',
       toFormat: 'PNG',
       targetExtension: '.png',
-      isSupported: true,
+      isSupported: false, // Not yet implemented
       iconName: 'image',
     ),
 
@@ -134,7 +134,7 @@ class ConversionRegistry {
       fromFormat: 'PDF',
       toFormat: 'PDF',
       targetExtension: '.pdf',
-      isSupported: true,
+      isSupported: false, // Not yet implemented
       iconName: 'compress',
     ),
     ConversionOption(
@@ -144,7 +144,7 @@ class ConversionRegistry {
       fromFormat: 'PDF',
       toFormat: 'PDF',
       targetExtension: '.pdf',
-      isSupported: true,
+      isSupported: false, // Not yet implemented
       iconName: 'lock',
     ),
   ];

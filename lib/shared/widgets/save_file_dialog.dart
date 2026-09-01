@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import '../../models/file_info.dart';
 import '../../services/save_manager/universal_save_manager.dart';
 import '../../utils/file_utils.dart';
 

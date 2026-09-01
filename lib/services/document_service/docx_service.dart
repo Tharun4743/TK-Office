@@ -99,16 +99,25 @@ class DocxService {
   <Default Extension="xml" ContentType="application/xml"/>
   <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
 </Types>''';
-    archive.addFile(ArchiveFile('[Content_Types].xml', contentTypesXml.length, utf8.encode(contentTypesXml)));
+    final contentTypesBytes = utf8.encode(contentTypesXml);
+    archive.addFile(ArchiveFile('[Content_Types].xml', contentTypesBytes.length, contentTypesBytes));
 
     // 2. _rels/.rels
     const rootRelsXml = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
 </Relationships>''';
-    archive.addFile(ArchiveFile('_rels/.rels', rootRelsXml.length, utf8.encode(rootRelsXml)));
+    final rootRelsBytes = utf8.encode(rootRelsXml);
+    archive.addFile(ArchiveFile('_rels/.rels', rootRelsBytes.length, rootRelsBytes));
 
-    // 3. word/document.xml
+    // 3. word/_rels/document.xml.rels  (REQUIRED by OOXML spec)
+    const wordRelsXml = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+</Relationships>''';
+    final wordRelsBytes = utf8.encode(wordRelsXml);
+    archive.addFile(ArchiveFile('word/_rels/document.xml.rels', wordRelsBytes.length, wordRelsBytes));
+
+    // 4. word/document.xml
     final docXmlBuffer = StringBuffer();
     docXmlBuffer.writeln('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>');
     docXmlBuffer.writeln('<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">');
@@ -191,7 +200,8 @@ class DocxService {
     docXmlBuffer.writeln('</w:document>');
 
     final docXmlStr = docXmlBuffer.toString();
-    archive.addFile(ArchiveFile('word/document.xml', docXmlStr.length, utf8.encode(docXmlStr)));
+    final docXmlBytes = utf8.encode(docXmlStr);
+    archive.addFile(ArchiveFile('word/document.xml', docXmlBytes.length, docXmlBytes));
 
     final encodedZip = ZipEncoder().encode(archive);
     return Uint8List.fromList(encodedZip ?? []);

@@ -15,7 +15,6 @@ import '../../storage/indexed_files_dao.dart';
 import '../../utils/date_utils.dart';
 import '../../utils/file_utils.dart';
 import '../conversion_center/conversion_center_screen.dart';
-import '../file_manager/file_manager_screen.dart';
 import '../file_manager/folder_browser_screen.dart';
 import '../settings/settings_screen.dart';
 import '../vault/vault_screen.dart';
@@ -44,10 +43,12 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isMultiSelectMode = false;
   final Set<String> _selectedFilePaths = {};
 
-  int _recoveredCount = 0;
   DocumentCategory? _selectedCategory;
   String? _selectedTag;
   String _searchQuery = '';
+
+  // ── Sort
+  _SortOption _currentSort = _SortOption.nameAZ;
 
   static const List<String> availableTags = ['Work', 'Personal', 'Finance', 'College', 'Invoices', 'Important'];
 
@@ -61,10 +62,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _checkRecoveredFiles() async {
-    final list = await RecoveryService.checkRecoveredDocuments();
-    if (list.isNotEmpty && mounted) {
-      setState(() => _recoveredCount = list.length);
-    }
+    // Recovery check retained for future use; currently no UI action triggered
+    await RecoveryService.checkRecoveredDocuments();
   }
 
   Future<void> _loadAccessibleFolders() async {
@@ -79,6 +78,44 @@ class _HomeScreenState extends State<HomeScreen> {
     if (mounted) {
       setState(() => _starredFiles = starred);
     }
+  }
+
+  /// Returns _discoveredFiles filtered and sorted by _currentSort (documents only).
+  List<LocalFileInfo> get _sortedFiles {
+    final list = _discoveredFiles.where((f) {
+      if (FileUtils.isTrashedFile(f.path) || f.name.startsWith('.')) {
+        return false;
+      }
+      if (FileUtils.isImageFile(f.path) || f.category == DocumentCategory.other) {
+        return false;
+      }
+      return FileUtils.isDocumentFile(f.path);
+    }).toList();
+
+    switch (_currentSort) {
+      case _SortOption.nameAZ:
+        list.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+        break;
+      case _SortOption.nameZA:
+        list.sort((a, b) => b.name.toLowerCase().compareTo(a.name.toLowerCase()));
+        break;
+      case _SortOption.dateNewest:
+        list.sort((a, b) => b.modifiedDate.compareTo(a.modifiedDate));
+        break;
+      case _SortOption.dateOldest:
+        list.sort((a, b) => a.modifiedDate.compareTo(b.modifiedDate));
+        break;
+      case _SortOption.sizeLargest:
+        list.sort((a, b) => b.sizeInBytes.compareTo(a.sizeInBytes));
+        break;
+      case _SortOption.sizeSmallest:
+        list.sort((a, b) => a.sizeInBytes.compareTo(b.sizeInBytes));
+        break;
+      case _SortOption.typeGroup:
+        list.sort((a, b) => a.extension.compareTo(b.extension));
+        break;
+    }
+    return list;
   }
 
   Future<void> _loadDiscoveredFiles() async {
@@ -749,27 +786,53 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ],
 
-              // 6. Section Header with Grid / List Toggle (Suggestion 4)
+              // 6. Section Header — Sort + Grid/List toggle
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 14, 20, 6),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        _searchQuery.isNotEmpty
-                            ? 'Results (${_discoveredFiles.length})'
-                            : 'Documents (${_discoveredFiles.length})',
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      Expanded(
+                        child: Text(
+                          _searchQuery.isNotEmpty
+                              ? 'Results (${_sortedFiles.length})'
+                              : 'Documents (${_sortedFiles.length})',
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
                       ),
-                      Row(
-                        children: [
-                          IconButton(
-                            icon: Icon(_isGridView ? Icons.view_list_rounded : Icons.grid_view_rounded, size: 20),
-                            tooltip: _isGridView ? 'Switch to List View' : 'Switch to Grid View',
-                            onPressed: () => setState(() => _isGridView = !_isGridView),
+                      // Sort chip
+                      GestureDetector(
+                        onTap: _showSortSheet,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF1E293B) : Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: isDark ? const Color(0xFF334155) : Colors.grey.shade300,
+                            ),
                           ),
-                        ],
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.sort_rounded, size: 14),
+                              const SizedBox(width: 4),
+                              Text(
+                                _currentSort.label,
+                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      // Grid / List toggle
+                      IconButton(
+                        icon: Icon(_isGridView ? Icons.view_list_rounded : Icons.grid_view_rounded, size: 20),
+                        tooltip: _isGridView ? 'Switch to List View' : 'Switch to Grid View',
+                        onPressed: () => setState(() => _isGridView = !_isGridView),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                       ),
                     ],
                   ),
@@ -786,7 +849,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                     )
-                  : _discoveredFiles.isEmpty
+                  : _sortedFiles.isEmpty
                       ? SliverToBoxAdapter(
                           child: Center(
                             child: Padding(
@@ -810,17 +873,17 @@ class _HomeScreenState extends State<HomeScreen> {
                               sliver: SliverGrid(
                                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                                   crossAxisCount: 2,
-                                  childAspectRatio: 0.95,
+                                  childAspectRatio: 0.82,
                                   crossAxisSpacing: 10,
                                   mainAxisSpacing: 10,
                                 ),
                                 delegate: SliverChildBuilderDelegate(
                                   (context, index) {
-                                    final file = _discoveredFiles[index];
+                                    final file = _sortedFiles[index];
                                     final isSelected = _selectedFilePaths.contains(file.path);
                                     return _buildGridCard(file, isDark, isSelected);
                                   },
-                                  childCount: _discoveredFiles.length,
+                                  childCount: _sortedFiles.length,
                                 ),
                               ),
                             )
@@ -829,11 +892,11 @@ class _HomeScreenState extends State<HomeScreen> {
                               sliver: SliverList(
                                 delegate: SliverChildBuilderDelegate(
                                   (context, index) {
-                                    final file = _discoveredFiles[index];
+                                    final file = _sortedFiles[index];
                                     final isSelected = _selectedFilePaths.contains(file.path);
                                     return _buildListTile(file, isDark, isSelected);
                                   },
-                                  childCount: _discoveredFiles.length,
+                                  childCount: _sortedFiles.length,
                                 ),
                               ),
                             ),
@@ -917,26 +980,15 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                 ],
               ),
-              const Spacer(),
-              // Thumbnail for PDF
-              if (isPdf)
-                Center(
-                  child: FutureBuilder<String?>(
-                    future: PdfThumbnailService.getThumbnailPath(file.path),
-                    builder: (context, snapshot) {
-                      if (snapshot.hasData && snapshot.data != null) {
-                        return ClipRRect(
-                          borderRadius: BorderRadius.circular(6),
-                          child: Image.file(File(snapshot.data!), height: 50, width: 40, fit: BoxFit.cover),
-                        );
-                      }
-                      return Icon(Icons.picture_as_pdf_rounded, size: 40, color: color);
-                    },
-                  ),
-                )
-              else
-                Center(child: Icon(FileUtils.getCategoryIcon(file.category), size: 40, color: color)),
-              const Spacer(),
+              // Thumbnail / icon area – takes all remaining vertical space
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: isPdf
+                      ? _PdfThumbnailWidget(path: file.path, color: color)
+                      : Center(child: Icon(FileUtils.getCategoryIcon(file.category), size: 48, color: color)),
+                ),
+              ),
               Text(
                 file.name,
                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
@@ -1089,6 +1141,205 @@ class _HomeScreenState extends State<HomeScreen> {
         width: 1.2,
       ),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  //  Sort bottom sheet
+  // ─────────────────────────────────────────────────────────────
+
+  void _showSortSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Drag handle
+                    Center(
+                      child: Container(
+                        width: 36,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade400,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    const Text(
+                      'Sort Documents',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 12),
+                    ..._SortOption.values.map((opt) {
+                      final isSelected = _currentSort == opt;
+                      return InkWell(
+                        borderRadius: BorderRadius.circular(10),
+                        onTap: () {
+                          setState(() => _currentSort = opt);
+                          setSheetState(() {});
+                          Navigator.pop(ctx);
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+                          child: Row(
+                            children: [
+                              Icon(
+                                opt.icon,
+                                size: 20,
+                                color: isSelected ? AppTheme.primaryBlue : Colors.grey,
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Text(
+                                  opt.label,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                    color: isSelected ? AppTheme.primaryBlue : null,
+                                  ),
+                                ),
+                              ),
+                              if (isSelected)
+                                const Icon(Icons.check_rounded, color: AppTheme.primaryBlue, size: 18),
+                            ],
+                          ),
+                        ),
+                      );
+                    }),
+                    const SizedBox(height: 4),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Sort option enum
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum _SortOption {
+  nameAZ,
+  nameZA,
+  dateNewest,
+  dateOldest,
+  sizeLargest,
+  sizeSmallest,
+  typeGroup,
+}
+
+extension _SortOptionExt on _SortOption {
+  String get label {
+    switch (this) {
+      case _SortOption.nameAZ:       return 'Name: A → Z';
+      case _SortOption.nameZA:       return 'Name: Z → A';
+      case _SortOption.dateNewest:   return 'Date: Newest first';
+      case _SortOption.dateOldest:   return 'Date: Oldest first';
+      case _SortOption.sizeLargest:  return 'Size: Largest first';
+      case _SortOption.sizeSmallest: return 'Size: Smallest first';
+      case _SortOption.typeGroup:    return 'File type';
+    }
+  }
+
+  IconData get icon {
+    switch (this) {
+      case _SortOption.nameAZ:       return Icons.sort_by_alpha_rounded;
+      case _SortOption.nameZA:       return Icons.sort_by_alpha_rounded;
+      case _SortOption.dateNewest:   return Icons.calendar_today_rounded;
+      case _SortOption.dateOldest:   return Icons.calendar_today_rounded;
+      case _SortOption.sizeLargest:  return Icons.data_usage_rounded;
+      case _SortOption.sizeSmallest: return Icons.data_usage_rounded;
+      case _SortOption.typeGroup:    return Icons.category_rounded;
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  High-quality PDF thumbnail widget
+//  • Renders async via FutureBuilder
+//  • Fills available space with BoxFit.contain (no cropping)
+//  • Shows fallback icon on failure
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _PdfThumbnailWidget extends StatelessWidget {
+  final String path;
+  final Color color;
+
+  const _PdfThumbnailWidget({required this.path, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<String?>(
+      future: PdfThumbnailService.getThumbnailPath(path),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          );
+        }
+
+        if (snapshot.hasData && snapshot.data != null) {
+          final thumbFile = File(snapshot.data!);
+          if (thumbFile.existsSync()) {
+            return LayoutBuilder(
+              builder: (ctx, constraints) {
+                // Use 82 % of the available height so the page is large
+                // but still leaves room for filename/size below.
+                final maxH = constraints.maxHeight * 0.92;
+                return Center(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: Container(
+                      // Soft drop-shadow so the page edge is visible on white cards
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(6),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withAlpha(30),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Image.file(
+                        thumbFile,
+                        height: maxH,
+                        fit: BoxFit.contain,
+                        cacheHeight: 600, // limit decoder memory
+                        filterQuality: FilterQuality.medium,
+                        errorBuilder: (_, __, ___) =>
+                            Icon(Icons.picture_as_pdf_rounded, size: 44, color: color),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            );
+          }
+        }
+
+        // Fallback icon
+        return Center(child: Icon(Icons.picture_as_pdf_rounded, size: 44, color: color));
+      },
     );
   }
 }

@@ -6,10 +6,8 @@ import 'package:path/path.dart' as p;
 import 'package:pdfx/pdfx.dart' as px;
 import 'package:syncfusion_flutter_pdf/pdf.dart' as sf;
 import '../../core/app_theme.dart';
-import '../../models/file_info.dart';
 import '../../models/pdf_edit_model.dart';
 import '../../services/conversion_service/conversion_service.dart';
-import '../../services/file_service/file_service.dart';
 import '../../services/pdf_service/pdf_baker_service.dart';
 import '../../services/pdf_service/pdf_tools_service.dart';
 import '../../services/save_manager/universal_save_manager.dart';
@@ -45,6 +43,7 @@ class _PdfDirectEditorScreenState extends State<PdfDirectEditorScreen> {
   final List<List<PdfElement>> _redoStack = [];
 
   String? _selectedElementId;
+  // ignore: unused_field
   String _searchQuery = '';
   final List<Rect> _searchResults = [];
 

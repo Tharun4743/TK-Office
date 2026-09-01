@@ -20,13 +20,17 @@ class WriterController extends ChangeNotifier {
   late QuillController _quillController;
   OfficeDocument? _document;
   bool _isLoading = true;
+  bool _hasError = false;
+  bool _isDisposed = false;
   SaveStatus _saveStatus = SaveStatus.idle;
   Timer? _debounceTimer;
+  StreamSubscription? _contentSubscription;
   String _statusMessage = '';
 
   QuillController get quillController => _quillController;
   OfficeDocument? get document => _document;
   bool get isLoading => _isLoading;
+  bool get hasError => _hasError;
   SaveStatus get saveStatus => _saveStatus;
   String get statusMessage => _statusMessage;
   bool get isDirty => _document?.isDirty ?? false;
@@ -50,7 +54,7 @@ class WriterController extends ChangeNotifier {
         selection: const TextSelection.collapsed(offset: 0),
       );
 
-      _quillController.document.changes.listen((_) {
+      _contentSubscription = _quillController.document.changes.listen((_) {
         _onContentChanged();
       });
 
@@ -58,6 +62,12 @@ class WriterController extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       _statusMessage = 'Error loading document: $e';
+      _hasError = true;
+      // Initialize a fallback controller so late fields are never uninitialized
+      _quillController = QuillController(
+        document: Document()..insert(0, '\n'),
+        selection: const TextSelection.collapsed(offset: 0),
+      );
       _isLoading = false;
       notifyListeners();
     }
@@ -82,21 +92,23 @@ class WriterController extends ChangeNotifier {
     if (_document == null || !_document!.isDirty) return;
 
     _saveStatus = SaveStatus.saving;
+    _statusMessage = '';
     notifyListeners();
 
     try {
       await _documentService.saveDocument(_document!);
+      if (_isDisposed) return; // Guard: controller may have been disposed
       _saveStatus = SaveStatus.saved;
       notifyListeners();
 
-      // Reset to idle after 2 seconds
-      Future.delayed(const Duration(seconds: 2), () {
-        if (_saveStatus == SaveStatus.saved) {
-          _saveStatus = SaveStatus.idle;
-          notifyListeners();
-        }
-      });
+      // Reset to idle after 2 seconds — guarded against post-dispose calls
+      await Future.delayed(const Duration(seconds: 2));
+      if (!_isDisposed && _saveStatus == SaveStatus.saved) {
+        _saveStatus = SaveStatus.idle;
+        notifyListeners();
+      }
     } catch (e) {
+      if (_isDisposed) return;
       _saveStatus = SaveStatus.error;
       _statusMessage = 'Autosave error: $e';
       notifyListeners();
@@ -107,6 +119,7 @@ class WriterController extends ChangeNotifier {
     if (_document == null) return false;
 
     _saveStatus = SaveStatus.saving;
+    _statusMessage = '';
     notifyListeners();
 
     try {
@@ -148,7 +161,9 @@ class WriterController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _isDisposed = true;
     _debounceTimer?.cancel();
+    _contentSubscription?.cancel();
     _quillController.dispose();
     super.dispose();
   }

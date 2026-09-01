@@ -3,23 +3,14 @@ import 'package:syncfusion_flutter_pdf/pdf.dart' as sf;
 
 class OcrResult {
   final String text;
-  final List<RecognizedBlock> blocks;
   final bool isSuccess;
   final String? errorMessage;
 
   OcrResult({
     required this.text,
-    this.blocks = const [],
     this.isSuccess = true,
     this.errorMessage,
   });
-}
-
-class RecognizedBlock {
-  final String text;
-  final List<String> lines;
-
-  RecognizedBlock({required this.text, required this.lines});
 }
 
 class OcrService {
@@ -46,15 +37,7 @@ class OcrService {
       doc.dispose();
       return fullText.toString();
     } catch (e) {
-      return 'Text extraction error: $e';
+      return 'Text extraction error: \$e';
     }
-  }
-
-  /// Extracts text from a document image/page
-  static Future<OcrResult> recognizeTextFromImage(String imagePath) async {
-    return OcrResult(
-      text: 'Image text extraction processed offline.',
-      isSuccess: true,
-    );
   }
 }

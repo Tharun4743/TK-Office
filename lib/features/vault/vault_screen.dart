@@ -109,7 +109,7 @@ class _VaultScreenState extends State<VaultScreen> {
 
   Future<void> _importFileToVault() async {
     final result = await FilePicker.pickFiles();
-    if (result != null && result.isNotEmpty && result.first.path != null && _vaultDirPath != null) {
+    if (result.isNotEmpty && result.first.path != null) {
       final sourceFile = File(result.first.path!);
       final fileName = p.basename(sourceFile.path);
       final destPath = p.join(_vaultDirPath!, fileName);

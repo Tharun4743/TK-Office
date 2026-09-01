@@ -1,11 +1,8 @@
-import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:pdfx/pdfx.dart' as px;
-import '../../models/file_info.dart';
 import '../../services/conversion_service/conversion_service.dart';
-import '../../services/file_service/file_service.dart';
 import '../../services/pdf_service/pdf_tools_service.dart';
 import '../../services/save_manager/universal_save_manager.dart';
 import '../../shared/widgets/tk_dialogs.dart';

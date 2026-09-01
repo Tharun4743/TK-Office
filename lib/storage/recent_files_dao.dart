@@ -39,22 +39,27 @@ class RecentFilesDao {
   Future<List<RecentFile>> getAllRecentFiles({DocumentCategory? category}) async {
     final db = await DatabaseHelper.instance.database;
 
-    List<Map<String, dynamic>> maps;
-    if (category == null) {
-      maps = await db.query(
-        'recent_files',
-        orderBy: 'last_opened DESC',
-        limit: 50,
-      );
-    } else {
-      maps = await db.query(
-        'recent_files',
-        where: 'category = ?',
-        whereArgs: [category.name],
-        orderBy: 'last_opened DESC',
-        limit: 50,
-      );
+    final List<String> whereClauses = [
+      "title NOT LIKE '.trashed-%'",
+      "title NOT LIKE '.%'",
+      "path NOT LIKE '%.trashed-%'",
+      "path NOT LIKE '%/.Trash/%'",
+      "category != 'other'",
+    ];
+    final List<dynamic> whereArgs = [];
+
+    if (category != null) {
+      whereClauses.add('category = ?');
+      whereArgs.add(category.name);
     }
+
+    final maps = await db.query(
+      'recent_files',
+      where: whereClauses.join(' AND '),
+      whereArgs: whereArgs.isNotEmpty ? whereArgs : null,
+      orderBy: 'last_opened DESC',
+      limit: 50,
+    );
 
     return maps.map((map) => RecentFile.fromMap(map)).toList();
   }

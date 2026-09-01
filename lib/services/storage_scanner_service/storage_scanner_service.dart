@@ -35,25 +35,7 @@ class StorageScannerService {
   final StreamController<ScanProgress> _progressController = StreamController<ScanProgress>.broadcast();
   Stream<ScanProgress> get progressStream => _progressController.stream;
 
-  static const List<String> supportedExtensions = [
-    '.pdf',
-    '.doc',
-    '.docx',
-    '.odt',
-    '.txt',
-    '.rtf',
-    '.xls',
-    '.xlsx',
-    '.ods',
-    '.csv',
-    '.ppt',
-    '.pptx',
-    '.odp',
-    '.jpg',
-    '.jpeg',
-    '.png',
-    '.webp',
-  ];
+  static const List<String> supportedExtensions = FileUtils.documentExtensions;
 
   static Future<bool> checkStoragePermission() async {
     try {
@@ -102,14 +84,12 @@ class StorageScannerService {
 
     final List<LocalFileInfo> batch = [];
 
-    // Priority targets first for instant discovery
+    // Priority targets first for instant discovery of documents
     final priorityPaths = [
       p.join(rootPath, 'Download'),
       p.join(rootPath, 'Documents'),
       p.join(rootPath, 'Android', 'media', 'com.whatsapp', 'WhatsApp', 'Media', 'WhatsApp Documents'),
       p.join(rootPath, 'WhatsApp', 'Media', 'WhatsApp Documents'),
-      p.join(rootPath, 'Pictures'),
-      p.join(rootPath, 'DCIM'),
     ];
 
     final Set<String> scannedPaths = {};
@@ -162,7 +142,7 @@ class StorageScannerService {
       for (final entity in entities) {
         if (entity is Directory) {
           final dirName = p.basename(entity.path);
-          if (dirName.startsWith('.') || dirName == 'Android') continue;
+          if (dirName.startsWith('.') || dirName.startsWith('.trashed') || dirName == 'Android') continue;
           if (scannedPaths.contains(entity.path)) continue;
 
           _progressController.add(ScanProgress(
@@ -241,15 +221,28 @@ class StorageScannerService {
       final entities = dir.listSync(followLinks: false);
       for (final entity in entities) {
         if (entity is File) {
+          final fileName = p.basename(entity.path);
+          if (FileUtils.isTrashedFile(entity.path) || fileName.startsWith('.')) {
+            continue;
+          }
+
+          if (FileUtils.isImageFile(entity.path)) {
+            continue;
+          }
+
           final ext = p.extension(entity.path).toLowerCase();
           if (supportedExtensions.contains(ext)) {
-            final stat = entity.statSync();
             final cat = FileUtils.getCategory(entity.path);
+            if (cat == DocumentCategory.other) {
+              continue;
+            }
+
+            final stat = entity.statSync();
             final folderName = p.basename(p.dirname(entity.path));
 
             final fileInfo = LocalFileInfo(
               path: entity.path,
-              name: p.basename(entity.path),
+              name: fileName,
               extension: ext,
               sizeInBytes: stat.size,
               modifiedDate: stat.modified,
@@ -267,7 +260,7 @@ class StorageScannerService {
           }
         } else if (entity is Directory) {
           final name = p.basename(entity.path);
-          if (!name.startsWith('.')) {
+          if (!name.startsWith('.') && !name.startsWith('.trashed') && name != 'Android') {
             await _scanDirectory(
               entity,
               batch,
