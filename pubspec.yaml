@@ -2,7 +2,7 @@ name: tk_office
 description: "TK Office — Personal Offline Android Office Suite"
 publish_to: 'none'
 
-version: 1.0.1
+version: 0.1.0
 
 environment:
   sdk: ^3.13.2
