@@ -1,0 +1,61 @@
+name: tk_office
+description: "TK Office — Personal Offline Android Office Suite"
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.13.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State Management
+  provider: ^6.1.2
+
+  # Local Persistence & File System
+  sqflite: ^2.4.1
+  path_provider: ^2.1.5
+  path: ^1.9.1
+  shared_preferences: ^2.3.5
+
+  # File Operations & SAF
+  file_picker: ^12.1.3
+  open_file: ^3.5.10
+
+  # Localization & Utilities
+  intl: ^0.20.2
+
+  # Document (Writer)
+  flutter_quill: ^11.5.1
+  dart_quill_delta: ^10.8.3
+
+  # Spreadsheet (Sheets)
+  excel: ^4.0.6
+  csv: ^6.0.0
+
+  # PDF (Viewer, Annotation, Print)
+  pdfx: ^2.6.0
+  pdf: ^3.11.1
+  printing: ^5.13.3
+
+  # Archive / XML for Office Open XML parsing (DOCX, PPTX)
+  archive: ^3.6.1
+  xml: ^6.5.0
+
+  cupertino_icons: ^1.0.8
+  syncfusion_flutter_pdf: ^33.2.13
+  crypto: ^3.0.6
+  image: ^4.3.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/logo.jpeg
