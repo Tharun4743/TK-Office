@@ -7,6 +7,7 @@ import 'package:printing/printing.dart';
 import '../../models/document_model.dart';
 import '../../utils/file_utils.dart';
 import '../storage_service/local_storage_service.dart';
+import 'doc_binary_service.dart';
 import 'docx_service.dart';
 import 'rtf_txt_service.dart';
 
@@ -39,28 +40,58 @@ class DocumentService {
     final title = p.basenameWithoutExtension(filePath);
     Delta delta;
 
-    if (ext == '.docx') {
-      delta = await DocxService.importDocx(filePath);
-    } else if (ext == '.doc') {
-      // Try parsing as DOCX first (some .doc files are actually OOXML)
-      delta = await DocxService.importDocx(filePath);
-      final ops = delta.toList();
-      final firstText = ops.isNotEmpty && ops.first.data is String ? (ops.first.data as String) : '';
-      // DocxService returns these strings when it cannot parse binary .doc
-      if (firstText.startsWith('Could not read') || firstText.startsWith('Error reading DOCX')) {
-        delta = Delta()..insert(
-          '⚠️  Legacy Binary Format\n\n'
-          'This file ("${p.basename(filePath)}") is a legacy binary .doc file '
-          'and cannot be opened offline. Please convert it to .docx format first.\n',
-        );
+    try {
+      if (ext == '.docx') {
+        // Native OOXML format — full fidelity
+        delta = await DocxService.importDocx(filePath);
+        final ops = delta.toList();
+        final firstText = ops.isNotEmpty && ops.first.data is String
+            ? (ops.first.data as String)
+            : '';
+        // If DocxService signals it could not read (e.g. corrupt zip)
+        if (firstText.startsWith('Could not read') || firstText.startsWith('Error reading')) {
+          // Try binary extraction as last resort
+          delta = await DocBinaryService.importDoc(filePath);
+        }
+      } else if (ext == '.doc') {
+        // Step 1: some .doc files are renamed OOXML — try that first
+        delta = await DocxService.importDocx(filePath);
+        final ops = delta.toList();
+        final firstText = ops.isNotEmpty && ops.first.data is String
+            ? (ops.first.data as String)
+            : '';
+        // Step 2: if OOXML failed, use binary text extraction
+        if (firstText.startsWith('Could not read') || firstText.startsWith('Error reading')) {
+          delta = await DocBinaryService.importDoc(filePath);
+        }
+      } else if (ext == '.rtf') {
+        // RTF: strip control codes, show plain text
+        delta = await RtfTxtService.importRtf(filePath);
+      } else if (ext == '.txt') {
+        delta = await RtfTxtService.importTxt(filePath);
+      } else if (ext == '.json') {
+        final content = await file.readAsString();
+        return OfficeDocument.fromJsonString(content, filePath: filePath, title: title);
+      } else {
+        // Unknown extension — try DOCX first, then binary extraction, then plain text
+        delta = await DocxService.importDocx(filePath);
+        final ops = delta.toList();
+        final firstText = ops.isNotEmpty && ops.first.data is String
+            ? (ops.first.data as String)
+            : '';
+        if (firstText.startsWith('Could not read') || firstText.startsWith('Error reading')) {
+          delta = await DocBinaryService.importDoc(filePath);
+        }
       }
-    } else if (ext == '.txt') {
-      delta = await RtfTxtService.importTxt(filePath);
-    } else if (ext == '.json') {
-      final content = await file.readAsString();
-      return OfficeDocument.fromJsonString(content, filePath: filePath, title: title);
-    } else {
-      delta = await RtfTxtService.importTxt(filePath);
+    } catch (e) {
+      // Absolute safety net — never crash on open
+      delta = Delta()
+        ..insert(
+          'TK Office could not fully open this file.\n\n'
+          'File: ${p.basename(filePath)}\n'
+          'Reason: ${e.toString()}\n\n'
+          'Try saving the file as .docx or .txt and re-opening it.\n',
+        );
     }
 
     return OfficeDocument(
