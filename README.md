@@ -56,6 +56,66 @@ Associated with **17+ document formats** in Android's `Open With` intent menu:
 
 ---
 
+## 🏗️ System Architecture
+
+TK Office is designed with a highly modular, offline-first architecture, optimizing for extreme performance and memory efficiency on mobile devices.
+
+```mermaid
+flowchart TD
+    classDef uiLayer fill:#e3f2fd,stroke:#1e88e5,stroke-width:2px,color:#000
+    classDef coreLayer fill:#f3e5f5,stroke:#8e24aa,stroke-width:2px,color:#000
+    classDef dataLayer fill:#e8f5e9,stroke:#43a047,stroke-width:2px,color:#000
+
+    subgraph Presentation ["📱 1. Presentation & UI Layer"]
+        direction TB
+        F["Flutter UI (Material 3)"] --> P["Provider State Management"]
+    end
+    class Presentation uiLayer
+
+    subgraph Core ["⚙️ 2. Core Processing Logic"]
+        direction LR
+        D["Document Engine (Quill)"]
+        S["Spreadsheet Engine (Excel/CSV)"]
+        V["PDF & Vector Graphics"]
+        X["Open XML Parsing"]
+    end
+    class Core coreLayer
+
+    subgraph Data ["💾 3. Persistence & Data Access"]
+        direction LR
+        SQL[("SQLite (Metadata)")]
+        SAF["Android SAF (Storage Access)"]
+        SEC["Crypto Security (Vault)"]
+    end
+    class Data dataLayer
+
+    P -->|"Background Isolates"| Core
+    Core -->|"File I/O"| SAF
+    Core -->|"Secure Storage"| SEC
+    SAF -.->|"Indexes Data"| SQL
+```
+
+### 1. Presentation & UI Layer
+- **Framework**: Flutter utilizing Material Design 3 guidelines for a premium, native feel.
+- **State Management**: **Provider** pattern (`provider`) ensuring decoupled business logic and reactive UI updates.
+- **Rendering Engine**: Hardware-accelerated rendering for smooth 60 FPS scrolling through heavy PDFs and large spreadsheets.
+
+### 2. Core Processing Logic
+- **Document Engine**: Delta-based rich text processing via `flutter_quill`, enabling seamless `.docx` parsing and editing without data loss.
+- **Spreadsheet Computation**: Robust evaluation pipeline (`excel`, `csv`) handling cell formulas, dynamic formatting, and large dataset pagination.
+- **PDF & Vector Graphics**: `pdfx` and `syncfusion_flutter_pdf` for high-fidelity rasterization, annotation, and manipulation of complex vector layers.
+- **Open XML Parsing**: Direct binary and XML node manipulation (`archive`, `xml`) allowing native reading of Microsoft Office file formats.
+
+### 3. Persistence & Data Access
+- **Metadata Indexing**: **SQLite** (`sqflite`) for highly optimized query performance over thousands of local documents (favorites, recent, tags).
+- **Storage Access Framework (SAF)**: Deep integration with Android's native file system (`file_picker`, `path_provider`) for secure, scoped I/O operations without requiring broad, invasive storage permissions.
+- **Cryptographic Security**: Local encryption algorithms (`crypto`) for the Private Vault, ensuring hardware-backed data protection.
+
+### 4. Concurrency & Performance
+- **Isolate Offloading**: All heavy document parsing, exporting, and PDF rendering operations are executed on background **Dart Isolates**, guaranteeing a perpetually responsive UI thread.
+
+---
+
 ## 🔒 Privacy & Offline Architecture
 
 - **Zero Cloud Services**: No Firebase, Supabase, or external APIs. All conversions run locally.
