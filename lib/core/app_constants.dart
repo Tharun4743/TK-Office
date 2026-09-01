@@ -1,8 +1,8 @@
 class AppConstants {
   static const String appName = 'TK Office';
   static const String appTagline = 'Your Documents. Your Device.';
-  static const String appVersion = '1.0.0';
-  static const String authorName = 'Tharun Kumar';
+  static const String appVersion = '0.1.0';
+  static const String authorName = 'Tharunkumar K';
   static const String authorEmail = 'tharunkumark42007@gmail.com';
   static const String authorWebsite = 'https://tharunkumark4743.netlify.app/';
   static const String appLogoAsset = 'assets/images/logo.jpeg';

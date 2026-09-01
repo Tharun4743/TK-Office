@@ -124,64 +124,7 @@ class SettingsScreen extends StatelessWidget {
           Card(
             child: Column(
               children: [
-                FutureBuilder<bool>(
-                  future: BiometricService.isAppLockEnabled(),
-                  builder: (context, snapshot) {
-                    final isEnabled = snapshot.data ?? false;
-                    return SwitchListTile(
-                      secondary: const Icon(Icons.fingerprint_rounded, color: AppTheme.primaryBlue),
-                      title: const Text('Biometric App Lock'),
-                      subtitle: const Text('Require fingerprint/face to open TK Office'),
-                      value: isEnabled,
-                      activeColor: AppTheme.primaryBlue,
-                      onChanged: (val) async {
-                        if (val) {
-                          final canAuth = await BiometricService.canAuthenticate();
-                          if (!canAuth && context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('No biometric sensor / PIN found on device')),
-                            );
-                            return;
-                          }
-                          final success = await BiometricService.authenticate(
-                            title: 'Enable Biometric Lock',
-                            subtitle: 'Confirm your identity',
-                          );
-                          if (success) {
-                            await BiometricService.setAppLockEnabled(true);
-                            (context as Element).markNeedsBuild();
-                          }
-                        } else {
-                          await BiometricService.setAppLockEnabled(false);
-                          (context as Element).markNeedsBuild();
-                        }
-                      },
-                    );
-                  },
-                ),
-                const Divider(indent: 16, endIndent: 16, height: 1),
-                ListTile(
-                  leading: const Icon(Icons.shield_rounded, color: Colors.amber),
-                  title: const Text('Private Vault PIN'),
-                  subtitle: const Text('Change your 4-digit vault security PIN'),
-                  trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: () async {
-                    final newPin = await TKDialogs.showNameInputDialog(
-                      context: context,
-                      title: 'Set Vault PIN',
-                      initialValue: '',
-                      actionLabel: 'Save PIN',
-                    );
-                    if (newPin != null && newPin.isNotEmpty) {
-                      await BiometricService.setVaultPin(newPin);
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('✓ Private Vault PIN updated')),
-                        );
-                      }
-                    }
-                  },
-                ),
+          const _BiometricTile(),
               ],
             ),
           ),
@@ -432,6 +375,99 @@ class SettingsScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ─── Biometric toggle as a proper StatefulWidget to avoid
+//     the illegal (context as Element).markNeedsBuild() pattern.
+class _BiometricTile extends StatefulWidget {
+  const _BiometricTile();
+
+  @override
+  State<_BiometricTile> createState() => _BiometricTileState();
+}
+
+class _BiometricTileState extends State<_BiometricTile> {
+  bool _isEnabled = false;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final enabled = await BiometricService.isAppLockEnabled();
+    if (mounted) setState(() { _isEnabled = enabled; _isLoading = false; });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const ListTile(
+        leading: Icon(Icons.fingerprint_rounded, color: AppTheme.primaryBlue),
+        title: Text('Biometric App Lock'),
+        trailing: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+      );
+    }
+
+    return Column(
+      children: [
+        SwitchListTile(
+          secondary: const Icon(Icons.fingerprint_rounded, color: AppTheme.primaryBlue),
+          title: const Text('Biometric App Lock'),
+          subtitle: const Text('Require fingerprint/face to open TK Office'),
+          value: _isEnabled,
+          activeColor: AppTheme.primaryBlue,
+          onChanged: (val) async {
+            if (val) {
+              final canAuth = await BiometricService.canAuthenticate();
+              if (!canAuth && mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('No biometric sensor / PIN found on device')),
+                );
+                return;
+              }
+              final success = await BiometricService.authenticate(
+                title: 'Enable Biometric Lock',
+                subtitle: 'Confirm your identity',
+              );
+              if (success && mounted) {
+                await BiometricService.setAppLockEnabled(true);
+                setState(() => _isEnabled = true);
+              }
+            } else {
+              await BiometricService.setAppLockEnabled(false);
+              if (mounted) setState(() => _isEnabled = false);
+            }
+          },
+        ),
+        const Divider(indent: 16, endIndent: 16, height: 1),
+        ListTile(
+          leading: const Icon(Icons.shield_rounded, color: Colors.amber),
+          title: const Text('Private Vault PIN'),
+          subtitle: const Text('Change your 4-digit vault security PIN'),
+          trailing: const Icon(Icons.chevron_right_rounded),
+          onTap: () async {
+            final newPin = await TKDialogs.showNameInputDialog(
+              context: context,
+              title: 'Set Vault PIN',
+              initialValue: '',
+              actionLabel: 'Save PIN',
+            );
+            if (newPin != null && newPin.isNotEmpty) {
+              await BiometricService.setVaultPin(newPin);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('✓ Private Vault PIN updated')),
+                );
+              }
+            }
+          },
+        ),
+      ],
     );
   }
 }
