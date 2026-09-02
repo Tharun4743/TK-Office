@@ -34,77 +34,81 @@ class DocxToPdfConverter {
     final pdf = pw.Document();
     final List<pw.Widget> pdfElements = [];
 
-    final paragraphs = document.findAllElements('w:p');
-    for (final p in paragraphs) {
-      final List<pw.InlineSpan> spans = [];
-      final runs = p.findElements('w:r');
+    final body = document.findAllElements('w:body').firstOrNull ?? document.rootElement;
 
-      for (final r in runs) {
-        final textElements = r.findElements('w:t');
-        final rawText = textElements.map((e) => e.innerText).join('');
-        final text = _cleanPdfText(rawText);
-        if (text.isEmpty) continue;
+    for (final node in body.children.whereType<XmlElement>()) {
+      if (node.name.local == 'p') {
+        final List<pw.InlineSpan> spans = [];
+        final runs = node.findElements('w:r');
 
-        final isBold = r.findElements('w:rPr').any((rPr) => rPr.findElements('w:b').isNotEmpty);
-        final isItalic = r.findElements('w:rPr').any((rPr) => rPr.findElements('w:i').isNotEmpty);
+        for (final r in runs) {
+          final textElements = r.findElements('w:t');
+          final rawText = textElements.map((e) => e.innerText).join('');
+          final text = _cleanPdfText(rawText);
+          if (text.isEmpty) continue;
 
-        spans.add(
-          pw.TextSpan(
-            text: text,
-            style: pw.TextStyle(
-              fontSize: 12,
-              fontWeight: isBold ? pw.FontWeight.bold : pw.FontWeight.normal,
-              fontStyle: isItalic ? pw.FontStyle.italic : pw.FontStyle.normal,
-            ),
-          ),
-        );
-      }
+          final isBold = r.findElements('w:rPr').any((rPr) => rPr.findElements('w:b').isNotEmpty);
+          final isItalic = r.findElements('w:rPr').any((rPr) => rPr.findElements('w:i').isNotEmpty);
+          final isUnderline = r.findElements('w:rPr').any((rPr) => rPr.findElements('w:u').isNotEmpty);
+          final isStrike = r.findElements('w:rPr').any((rPr) => rPr.findElements('w:strike').isNotEmpty);
 
-      if (spans.isNotEmpty) {
-        pdfElements.add(
-          pw.Padding(
-            padding: const pw.EdgeInsets.only(bottom: 8),
-            child: pw.RichText(text: pw.TextSpan(children: spans)),
-          ),
-        );
-      }
-    }
-
-    // Parse Tables if present
-    final tables = document.findAllElements('w:tbl');
-    for (final tbl in tables) {
-      final List<pw.TableRow> tableRows = [];
-      final rows = tbl.findElements('w:tr');
-
-      for (final r in rows) {
-        final cells = r.findElements('w:tc');
-        final List<pw.Widget> cellWidgets = [];
-
-        for (final c in cells) {
-          final text = c.findAllElements('w:t').map((t) => t.innerText).join(' ');
-          cellWidgets.add(
-            pw.Padding(
-              padding: const pw.EdgeInsets.all(6),
-              child: pw.Text(text, style: const pw.TextStyle(fontSize: 10)),
+          spans.add(
+            pw.TextSpan(
+              text: text,
+              style: pw.TextStyle(
+                fontSize: 12,
+                fontWeight: isBold ? pw.FontWeight.bold : pw.FontWeight.normal,
+                fontStyle: isItalic ? pw.FontStyle.italic : pw.FontStyle.normal,
+                decoration: isUnderline
+                    ? pw.TextDecoration.underline
+                    : (isStrike ? pw.TextDecoration.lineThrough : pw.TextDecoration.none),
+              ),
             ),
           );
         }
 
-        if (cellWidgets.isNotEmpty) {
-          tableRows.add(pw.TableRow(children: cellWidgets));
-        }
-      }
-
-      if (tableRows.isNotEmpty) {
-        pdfElements.add(
-          pw.Padding(
-            padding: const pw.EdgeInsets.symmetric(vertical: 8),
-            child: pw.Table(
-              border: pw.TableBorder.all(color: PdfColors.grey400),
-              children: tableRows,
+        if (spans.isNotEmpty) {
+          pdfElements.add(
+            pw.Padding(
+              padding: const pw.EdgeInsets.only(bottom: 8),
+              child: pw.RichText(text: pw.TextSpan(children: spans)),
             ),
-          ),
-        );
+          );
+        }
+      } else if (node.name.local == 'tbl') {
+        final List<pw.TableRow> tableRows = [];
+        final rows = node.findElements('w:tr');
+
+        for (final r in rows) {
+          final cells = r.findElements('w:tc');
+          final List<pw.Widget> cellWidgets = [];
+
+          for (final c in cells) {
+            final text = c.findAllElements('w:t').map((t) => t.innerText).join(' ');
+            cellWidgets.add(
+              pw.Padding(
+                padding: const pw.EdgeInsets.all(6),
+                child: pw.Text(_cleanPdfText(text), style: const pw.TextStyle(fontSize: 10)),
+              ),
+            );
+          }
+
+          if (cellWidgets.isNotEmpty) {
+            tableRows.add(pw.TableRow(children: cellWidgets));
+          }
+        }
+
+        if (tableRows.isNotEmpty) {
+          pdfElements.add(
+            pw.Padding(
+              padding: const pw.EdgeInsets.symmetric(vertical: 8),
+              child: pw.Table(
+                border: pw.TableBorder.all(color: PdfColors.grey400),
+                children: tableRows,
+              ),
+            ),
+          );
+        }
       }
     }
 

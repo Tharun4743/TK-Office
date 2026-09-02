@@ -80,6 +80,26 @@ class SheetsToolbar extends StatelessWidget {
                 tooltip: 'Align Right',
                 onPressed: () => controller.setAlignment(TextAlign.right),
               ),
+              // Merge / Unmerge Cells
+              IconButton(
+                icon: Icon(
+                  cell.colSpan > 1 || cell.rowSpan > 1
+                      ? Icons.call_split_rounded
+                      : Icons.call_merge_rounded,
+                  color: (cell.colSpan > 1 || cell.rowSpan > 1) ? AppTheme.sheetGreen : null,
+                ),
+                tooltip: cell.colSpan > 1 || cell.rowSpan > 1 ? 'Unmerge Cell' : 'Merge Columns',
+                onPressed: () {
+                  final row = controller.selectedRow;
+                  final col = controller.selectedCol;
+                  if (cell.colSpan > 1 || cell.rowSpan > 1) {
+                    controller.unmergeCell(row, col);
+                  } else {
+                    // Default merge 2 columns rightward
+                    controller.mergeCells(row, col, row, col + 1);
+                  }
+                },
+              ),
               _buildDivider(isDark),
 
               // Quick AutoSum button

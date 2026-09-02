@@ -122,6 +122,8 @@ class UniversalSaveManager {
     // Initial default directory (Download or Documents or first available)
     String selectedDirPath = availableLocations.isNotEmpty ? availableLocations.first.path : (await getTemporaryDirectory()).path;
 
+    if (!context.mounted) return null;
+
     final saveResult = await _promptLiveSaveDialog(
       context: context,
       title: 'Save Converted File',
@@ -249,6 +251,8 @@ class UniversalSaveManager {
     final availableLocations = await getAvailableSaveLocations(category);
 
     String selectedDirPath = availableLocations.isNotEmpty ? availableLocations.first.path : (await getTemporaryDirectory()).path;
+
+    if (!context.mounted) return null;
 
     final saveResult = await _promptMultiFileSaveDialog(
       context: context,

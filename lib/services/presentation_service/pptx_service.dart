@@ -216,7 +216,7 @@ class PptxService {
     required double slideW,
     required double slideH,
   }) {
-    // Build rId → media-path map from .rels
+    String? layoutPath;
     final Map<String, String> rIdToMedia = {};
     if (slideRels != null) {
       try {
@@ -225,7 +225,9 @@ class PptxService {
           final id = rel.getAttribute('Id') ?? '';
           final target = rel.getAttribute('Target') ?? '';
           final type = rel.getAttribute('Type') ?? '';
-          if (type.contains('image') || target.contains('media/')) {
+          if (type.contains('slideLayout')) {
+            layoutPath = target.startsWith('..') ? 'ppt/${target.substring(3)}' : 'ppt/slides/$target';
+          } else if (type.contains('image') || target.contains('media/')) {
             // Target is relative to slides/: ../media/image1.png → ppt/media/image1.png
             final normalized = target.startsWith('..') ? 'ppt/${target.substring(3)}' : 'ppt/slides/$target';
             rIdToMedia[id] = normalized;
@@ -266,6 +268,33 @@ class PptxService {
       }
     }
 
+    // ── Inherit Layout / Master background and static template elements
+    XmlDocument? layoutDoc;
+    if (layoutPath != null) {
+      final layoutXml = _archiveText(archive, layoutPath);
+      if (layoutXml != null) {
+        try {
+          layoutDoc = XmlDocument.parse(layoutXml);
+        } catch (_) {}
+      }
+
+      _parseLayoutAndMasterElements(
+        layoutPath: layoutPath,
+        slideIndex: slideIndex,
+        archive: archive,
+        themeColors: themeColors,
+        elements: elements,
+        setBgColorIfDefault: (color) {
+          if (bgColor == Colors.white && bgGradient.isEmpty && bgImageBytes == null) {
+            bgColor = color;
+          }
+        },
+        setBgImageIfDefault: (bytes) {
+          bgImageBytes ??= bytes;
+        },
+      );
+    }
+
     // ── Shape tree
     final spTree = doc.findAllElements('p:spTree').firstOrNull;
     if (spTree != null) {
@@ -274,7 +303,7 @@ class PptxService {
         final tag = child.name.local;
         switch (tag) {
           case 'sp':
-            final elem = _parseShape(child, slideIndex, zOrder, themeColors);
+            final elem = _parseShape(child, slideIndex, zOrder, themeColors, layoutDoc: layoutDoc);
             if (elem != null) elements.add(elem);
             break;
           case 'pic':
@@ -327,6 +356,113 @@ class PptxService {
   }
 
   // ─────────────────────────────────────────────────────────────
+  //  Parse static non-placeholder elements from slideLayout & master
+  // ─────────────────────────────────────────────────────────────
+
+  static void _parseLayoutAndMasterElements({
+    required String layoutPath,
+    required int slideIndex,
+    required Archive archive,
+    required Map<String, Color> themeColors,
+    required List<SlideElement> elements,
+    required void Function(Color) setBgColorIfDefault,
+    required void Function(Uint8List) setBgImageIfDefault,
+  }) {
+    final layoutXml = _archiveText(archive, layoutPath);
+    if (layoutXml == null) return;
+
+    try {
+      final layoutDoc = XmlDocument.parse(layoutXml);
+
+      // 1. Resolve layout rels
+      final layoutFileName = layoutPath.split('/').last;
+      final layoutRelsPath = 'ppt/slideLayouts/_rels/$layoutFileName.rels';
+      final layoutRels = _archiveText(archive, layoutRelsPath);
+
+      final Map<String, String> layoutRIdToMedia = {};
+      String? masterPath;
+
+      if (layoutRels != null) {
+        try {
+          final relsDoc = XmlDocument.parse(layoutRels);
+          for (final rel in relsDoc.findAllElements('Relationship')) {
+            final id = rel.getAttribute('Id') ?? '';
+            final target = rel.getAttribute('Target') ?? '';
+            final type = rel.getAttribute('Type') ?? '';
+            if (type.contains('slideMaster')) {
+              masterPath = target.startsWith('..') ? 'ppt/${target.substring(3)}' : 'ppt/slideLayouts/$target';
+            } else if (type.contains('image') || target.contains('media/')) {
+              final normalized = target.startsWith('..') ? 'ppt/${target.substring(3)}' : 'ppt/slideLayouts/$target';
+              layoutRIdToMedia[id] = normalized;
+            }
+          }
+        } catch (_) {}
+      }
+
+      // 2. Check layout background
+      final bgPr = layoutDoc.findAllElements('p:bg').firstOrNull?.findElements('p:bgPr').firstOrNull;
+      if (bgPr != null) {
+        final solidFill = bgPr.findElements('a:solidFill').firstOrNull;
+        if (solidFill != null) {
+          final c = _parseColorElement(solidFill.children.whereType<XmlElement>().firstOrNull, themeColors);
+          if (c != null) setBgColorIfDefault(c);
+        }
+        final blipFill = bgPr.findElements('a:blipFill').firstOrNull;
+        if (blipFill != null) {
+          final blip = blipFill.findElements('a:blip').firstOrNull;
+          final rId = blip?.getAttribute('r:embed') ?? blip?.getAttribute('rEmbed') ?? '';
+          if (rId.isNotEmpty && layoutRIdToMedia.containsKey(rId)) {
+            final bytes = _archiveBytes(archive, layoutRIdToMedia[rId]!);
+            if (bytes != null) setBgImageIfDefault(bytes);
+          }
+        }
+      }
+
+      // 3. Parse non-placeholder shapes/images from layout spTree
+      final spTree = layoutDoc.findAllElements('p:spTree').firstOrNull;
+      if (spTree != null) {
+        var zOrder = 0;
+        for (final child in spTree.childElements) {
+          final tag = child.name.local;
+          // Only take non-placeholder elements (template branding, logos, shapes)
+          final isPlaceholder = child.findAllElements('p:ph').isNotEmpty;
+          if (!isPlaceholder) {
+            switch (tag) {
+              case 'sp':
+                final elem = _parseShape(child, slideIndex, 9000 + zOrder, themeColors);
+                if (elem != null) elements.add(elem);
+                break;
+              case 'pic':
+                final elem = _parsePic(child, slideIndex, 9000 + zOrder, archive, layoutRIdToMedia);
+                if (elem != null) elements.add(elem);
+                break;
+            }
+          }
+          zOrder++;
+        }
+      }
+
+      // 4. If masterPath exists, check master background
+      if (masterPath != null) {
+        final masterXml = _archiveText(archive, masterPath);
+        if (masterXml != null) {
+          try {
+            final masterDoc = XmlDocument.parse(masterXml);
+            final mBgPr = masterDoc.findAllElements('p:bg').firstOrNull?.findElements('p:bgPr').firstOrNull;
+            if (mBgPr != null) {
+              final solidFill = mBgPr.findElements('a:solidFill').firstOrNull;
+              if (solidFill != null) {
+                final c = _parseColorElement(solidFill.children.whereType<XmlElement>().firstOrNull, themeColors);
+                if (c != null) setBgColorIfDefault(c);
+              }
+            }
+          } catch (_) {}
+        }
+      }
+    } catch (_) {}
+  }
+
+  // ─────────────────────────────────────────────────────────────
   //  Parse <p:sp> — text box or shape
   // ─────────────────────────────────────────────────────────────
 
@@ -334,10 +470,36 @@ class PptxService {
     XmlElement sp,
     int slideIndex,
     int zOrder,
-    Map<String, Color> theme,
-  ) {
+    Map<String, Color> theme, {
+    XmlDocument? layoutDoc,
+  }) {
     final id = 'sl${slideIndex}_sp$zOrder';
-    final xfrm = _parseXfrm(sp.findAllElements('a:xfrm').firstOrNull);
+    var xfrmEl = sp.findAllElements('a:xfrm').firstOrNull;
+
+    // Inherit xfrm from layout placeholder if omitted on slide shape
+    if (xfrmEl == null && layoutDoc != null) {
+      final ph = sp.findAllElements('p:ph').firstOrNull;
+      if (ph != null) {
+        final phType = ph.getAttribute('type') ?? '';
+        final phIdx = ph.getAttribute('idx') ?? '';
+
+        for (final lSp in layoutDoc.findAllElements('p:sp')) {
+          final lPh = lSp.findAllElements('p:ph').firstOrNull;
+          if (lPh != null) {
+            final lType = lPh.getAttribute('type') ?? '';
+            final lIdx = lPh.getAttribute('idx') ?? '';
+            if ((phType.isNotEmpty && phType == lType) ||
+                (phIdx.isNotEmpty && phIdx == lIdx) ||
+                (phType.isEmpty && phIdx.isEmpty && lType.contains('Title'))) {
+              xfrmEl = lSp.findAllElements('a:xfrm').firstOrNull;
+              if (xfrmEl != null) break;
+            }
+          }
+        }
+      }
+    }
+
+    final xfrm = _parseXfrm(xfrmEl);
 
     // Fill
     Color? fillColor;

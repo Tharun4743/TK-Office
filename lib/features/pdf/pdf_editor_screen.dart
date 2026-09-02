@@ -22,7 +22,7 @@ class _PdfEditorScreenState extends State<PdfEditorScreen> {
   final List<DrawingPoint?> _points = [];
   final List<PdfAnnotation> _savedAnnotations = [];
   Color _selectedColor = Colors.yellow.shade700;
-  double _strokeWidth = 4.0;
+  final double _strokeWidth = 4.0;
   bool _isHighlightMode = false;
   bool _isEraserMode = false;
 

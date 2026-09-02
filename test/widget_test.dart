@@ -5,7 +5,7 @@ void main() {
   testWidgets('App Constants and Brand check', (WidgetTester tester) async {
     expect(AppConstants.appName, 'TK Office');
     expect(AppConstants.appTagline, 'Your Documents. Your Device.');
-    expect(AppConstants.authorName, 'Tharun Kumar');
+    expect(AppConstants.authorName, 'Tharunkumar K');
     expect(AppConstants.authorEmail, 'tharunkumark42007@gmail.com');
     expect(AppConstants.authorWebsite, 'https://tharunkumark4743.netlify.app/');
   });

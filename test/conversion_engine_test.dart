@@ -4,7 +4,6 @@ import 'package:archive/archive.dart';
 import 'package:excel/excel.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
-import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:tk_office/services/conversion_service/conversion_registry.dart';
 import 'package:tk_office/services/conversion_service/converters/docx_to_pdf_converter.dart';

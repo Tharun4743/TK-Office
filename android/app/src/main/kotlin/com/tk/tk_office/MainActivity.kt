@@ -28,6 +28,7 @@ class MainActivity : FlutterFragmentActivity() {
     private val INTENT_CHANNEL = "com.tk.tk_office/intent"
     private val STORAGE_CHANNEL = "com.tk.tk_office/storage"
     private val AUTH_CHANNEL = "com.tk.tk_office/auth"
+    private val RESOLVER_CHANNEL = "com.tk.tk_office/resolver"
 
     private var pendingIntentData: Map<String, Any?>? = null
     private var intentMethodChannel: MethodChannel? = null
@@ -234,6 +235,78 @@ class MainActivity : FlutterFragmentActivity() {
                     })
 
                     biometricPrompt.authenticate(promptInfo)
+                }
+                else -> result.notImplemented()
+            }
+        }
+
+        // 5. URI Resolver Channel — resolves content:// URIs to local cache files
+        // Used by DocxViewerScreen and PdfViewerScreen for content:// URIs
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, RESOLVER_CHANNEL).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "resolveUri" -> {
+                    val uri = call.argument<String>("uri")
+                    if (uri != null) {
+                        try {
+                            val parsed = Uri.parse(uri)
+                            val localPath = resolveAndCopyUri(parsed)
+                            if (localPath != null) {
+                                result.success(mapOf(
+                                    "localPath" to localPath,
+                                    "displayName" to File(localPath).name
+                                ))
+                            } else {
+                                result.error("RESOLVE_FAILED", "Could not resolve URI: $uri", null)
+                            }
+                        } catch (e: Exception) {
+                            result.error("RESOLVE_ERROR", e.message, null)
+                        }
+                    } else {
+                        result.error("INVALID_URI", "URI is null", null)
+                    }
+                }
+                "getDisplayName" -> {
+                    val uri = call.argument<String>("uri")
+                    if (uri != null) {
+                        try {
+                            val parsed = Uri.parse(uri)
+                            var name = "document"
+                            if (parsed.scheme == "content") {
+                                val cursor = contentResolver.query(parsed, null, null, null, null)
+                                cursor?.use {
+                                    if (it.moveToFirst()) {
+                                        val idx = it.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                                        if (idx >= 0) name = it.getString(idx) ?: name
+                                    }
+                                }
+                            } else if (parsed.scheme == "file") {
+                                name = parsed.lastPathSegment ?: name
+                            }
+                            result.success(name)
+                        } catch (e: Exception) {
+                            result.error("NAME_ERROR", e.message, null)
+                        }
+                    } else {
+                        result.success("document")
+                    }
+                }
+                "deleteTemp" -> {
+                    val path = call.argument<String>("path")
+                    if (path != null) {
+                        try {
+                            val f = File(path)
+                            // Safety: only delete inside cache temp dirs
+                            if (f.exists() &&
+                                (path.contains("tk_working_files") || path.contains("tk_viewer_temp"))) {
+                                f.delete()
+                            }
+                            result.success(true)
+                        } catch (e: Exception) {
+                            result.success(false)
+                        }
+                    } else {
+                        result.success(false)
+                    }
                 }
                 else -> result.notImplemented()
             }

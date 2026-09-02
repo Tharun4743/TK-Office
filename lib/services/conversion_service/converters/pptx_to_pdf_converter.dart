@@ -17,7 +17,11 @@ class PptxToPdfConverter {
 
     final pdf = pw.Document();
     final slideFiles = archive.files.where((f) => RegExp(r'ppt/slides/slide\d+\.xml').hasMatch(f.name)).toList();
-    slideFiles.sort((a, b) => a.name.compareTo(b.name));
+    slideFiles.sort((a, b) {
+      final numA = int.tryParse(RegExp(r'\d+').firstMatch(a.name)?.group(0) ?? '0') ?? 0;
+      final numB = int.tryParse(RegExp(r'\d+').firstMatch(b.name)?.group(0) ?? '0') ?? 0;
+      return numA.compareTo(numB);
+    });
 
     if (slideFiles.isEmpty) {
       throw Exception('Invalid PPTX format: no slides found.');
@@ -43,7 +47,7 @@ class PptxToPdfConverter {
             padding: const pw.EdgeInsets.all(24),
             decoration: pw.BoxDecoration(
               color: PdfColors.white,
-              border: pw.TableBorder.all(color: PdfColors.grey300, width: 1),
+              border: pw.Border.all(color: PdfColors.grey300, width: 1),
               borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
             ),
             child: pw.Column(
@@ -70,7 +74,7 @@ class PptxToPdfConverter {
                           child: pw.Row(
                             crossAxisAlignment: pw.CrossAxisAlignment.start,
                             children: [
-                              pw.Text('• ', style: const pw.TextStyle(fontSize: 14, color: PdfColors.indigo700)),
+                              pw.Text('- ', style: const pw.TextStyle(fontSize: 14, color: PdfColors.indigo700)),
                               pw.Expanded(
                                 child: pw.Text(t, style: const pw.TextStyle(fontSize: 14, color: PdfColors.grey800)),
                               ),

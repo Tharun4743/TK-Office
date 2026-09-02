@@ -28,12 +28,22 @@ class IntentService {
     });
   }
 
-  static void _handleIntentData(Map<dynamic, dynamic> data, GlobalKey<NavigatorState> navigatorKey) {
+  static void _handleIntentData(
+    Map<dynamic, dynamic> data,
+    GlobalKey<NavigatorState> navigatorKey,
+  ) {
     final filePath = data['filePath'] as String?;
+    final mimeType = data['mimeType'] as String?;
+    final fileName = data['fileName'] as String?;
     final context = navigatorKey.currentContext;
 
     if (filePath != null && context != null) {
-      DocumentRouter.routeDocument(context, filePath, isExternal: true);
+      DocumentRouter.routeDocument(
+        context,
+        filePath,
+        displayName: fileName,
+        mimeType: mimeType,
+      );
     }
   }
 

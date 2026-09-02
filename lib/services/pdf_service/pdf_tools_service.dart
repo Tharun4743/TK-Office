@@ -528,7 +528,7 @@ class PdfToolsService {
       final bytes = await File(inputPath).readAsBytes();
       final sf.PdfDocument doc = sf.PdfDocument(inputBytes: bytes);
       final extractor = sf.PdfTextExtractor(doc);
-      final text = extractor.extractText();
+      final text = extractor.extractText(startPageIndex: 0, endPageIndex: doc.pages.count - 1);
       doc.dispose();
 
       if (text.trim().isNotEmpty) {
@@ -586,7 +586,7 @@ class PdfToolsService {
       rowIdx++;
     }
 
-    final bytes = excel.encode()!;
+    final bytes = excel.encode() ?? <int>[];
     await File(outputPath).writeAsBytes(bytes);
     return outputPath;
   }

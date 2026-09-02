@@ -204,7 +204,7 @@ class _FileManagerViewState extends State<_FileManagerView> {
                         child: ListView.separated(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                           itemCount: controller.files.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 8),
+                          separatorBuilder: (context, index) => const SizedBox(height: 8),
                           itemBuilder: (context, index) {
                             final file = controller.files[index];
                             final color = FileUtils.getCategoryColor(file.category);
@@ -389,41 +389,32 @@ class _FileManagerViewState extends State<_FileManagerView> {
                 ),
               ),
               const Divider(),
-              RadioListTile<FileSortOption>(
-                title: const Text('Date Modified (Newest First)'),
-                value: FileSortOption.dateDesc,
+              RadioGroup<FileSortOption>(
                 groupValue: controller.sortOption,
                 onChanged: (val) {
                   if (val != null) controller.setSortOption(val);
                   Navigator.pop(ctx);
                 },
-              ),
-              RadioListTile<FileSortOption>(
-                title: const Text('Date Modified (Oldest First)'),
-                value: FileSortOption.dateAsc,
-                groupValue: controller.sortOption,
-                onChanged: (val) {
-                  if (val != null) controller.setSortOption(val);
-                  Navigator.pop(ctx);
-                },
-              ),
-              RadioListTile<FileSortOption>(
-                title: const Text('File Name (A to Z)'),
-                value: FileSortOption.nameAsc,
-                groupValue: controller.sortOption,
-                onChanged: (val) {
-                  if (val != null) controller.setSortOption(val);
-                  Navigator.pop(ctx);
-                },
-              ),
-              RadioListTile<FileSortOption>(
-                title: const Text('File Size (Largest First)'),
-                value: FileSortOption.sizeDesc,
-                groupValue: controller.sortOption,
-                onChanged: (val) {
-                  if (val != null) controller.setSortOption(val);
-                  Navigator.pop(ctx);
-                },
+                child: Column(
+                  children: [
+                    RadioListTile<FileSortOption>(
+                      title: const Text('Date Modified (Newest First)'),
+                      value: FileSortOption.dateDesc,
+                    ),
+                    RadioListTile<FileSortOption>(
+                      title: const Text('Date Modified (Oldest First)'),
+                      value: FileSortOption.dateAsc,
+                    ),
+                    RadioListTile<FileSortOption>(
+                      title: const Text('File Name (A to Z)'),
+                      value: FileSortOption.nameAsc,
+                    ),
+                    RadioListTile<FileSortOption>(
+                      title: const Text('File Size (Largest First)'),
+                      value: FileSortOption.sizeDesc,
+                    ),
+                  ],
+                ),
               ),
             ],
           ),

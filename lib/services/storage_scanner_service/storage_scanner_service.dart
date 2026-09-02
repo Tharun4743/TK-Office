@@ -35,7 +35,10 @@ class StorageScannerService {
   final StreamController<ScanProgress> _progressController = StreamController<ScanProgress>.broadcast();
   Stream<ScanProgress> get progressStream => _progressController.stream;
 
-  static const List<String> supportedExtensions = FileUtils.documentExtensions;
+  static const List<String> supportedExtensions = [
+    ...FileUtils.documentExtensions,
+    ...FileUtils.imageExtensions,
+  ];
 
   static Future<bool> checkStoragePermission() async {
     try {

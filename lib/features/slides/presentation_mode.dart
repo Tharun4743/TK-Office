@@ -132,7 +132,7 @@ class _PresentationModeScreenState extends State<PresentationModeScreen> {
       return Image.memory(
         slide.backgroundImageBytes!,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => Container(color: slide.backgroundColor),
+        errorBuilder: (context, error, stackTrace) => Container(color: slide.backgroundColor),
       );
     }
     if (slide.backgroundGradientColors.length >= 2) {
@@ -182,7 +182,7 @@ class _PresentationModeScreenState extends State<PresentationModeScreen> {
       case SlideElementType.image:
         return elem.imageBytes != null
             ? Image.memory(elem.imageBytes!, fit: BoxFit.fill,
-                errorBuilder: (_, __, ___) => const SizedBox.shrink())
+                errorBuilder: (context, error, stackTrace) => const SizedBox.shrink())
             : const SizedBox.shrink();
       case SlideElementType.table:
         return _buildTable(elem, scale);

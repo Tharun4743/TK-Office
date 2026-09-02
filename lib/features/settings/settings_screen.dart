@@ -34,39 +34,30 @@ class SettingsScreen extends StatelessWidget {
           Card(
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Column(
-                children: [
-                  RadioListTile<ThemeMode>(
-                    title: const Text('System Default'),
-                    subtitle: const Text('Matches your Android device theme'),
-                    value: ThemeMode.system,
-                    groupValue: settings.themeMode,
-                    activeColor: AppTheme.primaryBlue,
-                    onChanged: (mode) {
-                      if (mode != null) settingsController.updateThemeMode(mode);
-                    },
-                  ),
-                  const Divider(indent: 16, endIndent: 16, height: 1),
-                  RadioListTile<ThemeMode>(
-                    title: const Text('Light Mode'),
-                    value: ThemeMode.light,
-                    groupValue: settings.themeMode,
-                    activeColor: AppTheme.primaryBlue,
-                    onChanged: (mode) {
-                      if (mode != null) settingsController.updateThemeMode(mode);
-                    },
-                  ),
-                  const Divider(indent: 16, endIndent: 16, height: 1),
-                  RadioListTile<ThemeMode>(
-                    title: const Text('Dark Mode'),
-                    value: ThemeMode.dark,
-                    groupValue: settings.themeMode,
-                    activeColor: AppTheme.primaryBlue,
-                    onChanged: (mode) {
-                      if (mode != null) settingsController.updateThemeMode(mode);
-                    },
-                  ),
-                ],
+              child: RadioGroup<ThemeMode>(
+                groupValue: settings.themeMode,
+                onChanged: (mode) {
+                  if (mode != null) settingsController.updateThemeMode(mode);
+                },
+                child: Column(
+                  children: [
+                    RadioListTile<ThemeMode>(
+                      title: const Text('System Default'),
+                      subtitle: const Text('Matches your Android device theme'),
+                      value: ThemeMode.system,
+                    ),
+                    const Divider(indent: 16, endIndent: 16, height: 1),
+                    RadioListTile<ThemeMode>(
+                      title: const Text('Light Mode'),
+                      value: ThemeMode.light,
+                    ),
+                    const Divider(indent: 16, endIndent: 16, height: 1),
+                    RadioListTile<ThemeMode>(
+                      title: const Text('Dark Mode'),
+                      value: ThemeMode.dark,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -111,7 +102,7 @@ class SettingsScreen extends StatelessWidget {
                         : 'Autosave disabled',
                   ),
                   value: settings.autosaveEnabled,
-                  activeColor: AppTheme.primaryBlue,
+                  activeThumbColor: AppTheme.primaryBlue,
                   onChanged: (val) => settingsController.toggleAutosave(val),
                 ),
               ],
@@ -420,12 +411,14 @@ class _BiometricTileState extends State<_BiometricTile> {
           title: const Text('Biometric App Lock'),
           subtitle: const Text('Require fingerprint/face to open TK Office'),
           value: _isEnabled,
-          activeColor: AppTheme.primaryBlue,
+          activeThumbColor: AppTheme.primaryBlue,
           onChanged: (val) async {
+            final messenger = ScaffoldMessenger.of(context);
             if (val) {
               final canAuth = await BiometricService.canAuthenticate();
-              if (!canAuth && mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
+              if (!mounted) return;
+              if (!canAuth) {
+                messenger.showSnackBar(
                   const SnackBar(content: Text('No biometric sensor / PIN found on device')),
                 );
                 return;
@@ -434,9 +427,10 @@ class _BiometricTileState extends State<_BiometricTile> {
                 title: 'Enable Biometric Lock',
                 subtitle: 'Confirm your identity',
               );
-              if (success && mounted) {
+              if (!mounted) return;
+              if (success) {
                 await BiometricService.setAppLockEnabled(true);
-                setState(() => _isEnabled = true);
+                if (mounted) setState(() => _isEnabled = true);
               }
             } else {
               await BiometricService.setAppLockEnabled(false);
@@ -451,19 +445,20 @@ class _BiometricTileState extends State<_BiometricTile> {
           subtitle: const Text('Change your 4-digit vault security PIN'),
           trailing: const Icon(Icons.chevron_right_rounded),
           onTap: () async {
+            final messenger = ScaffoldMessenger.of(context);
             final newPin = await TKDialogs.showNameInputDialog(
               context: context,
               title: 'Set Vault PIN',
               initialValue: '',
               actionLabel: 'Save PIN',
             );
+            if (!mounted) return;
             if (newPin != null && newPin.isNotEmpty) {
               await BiometricService.setVaultPin(newPin);
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('✓ Private Vault PIN updated')),
-                );
-              }
+              if (!mounted) return;
+              messenger.showSnackBar(
+                const SnackBar(content: Text('✓ Private Vault PIN updated')),
+              );
             }
           },
         ),

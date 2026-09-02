@@ -97,7 +97,7 @@ class SlideCanvas extends StatelessWidget {
       return Image.memory(
         slide.backgroundImageBytes!,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => _solidBackground(slide.backgroundColor),
+        errorBuilder: (context, error, stackTrace) => _solidBackground(slide.backgroundColor),
       );
     }
 
@@ -263,52 +263,50 @@ class SlideCanvas extends StatelessWidget {
   }
 
   Widget _buildRichText(SlideElement elem, double scale) {
-    // Build one InlineSpan per paragraph, joined by newlines
-    final spans = <InlineSpan>[];
-
-    for (var pi = 0; pi < elem.paragraphs.length; pi++) {
-      final para = elem.paragraphs[pi];
-
-      // Paragraph spacing before (as empty span — approximate)
-      if (para.spacingBefore > 0 && pi > 0) {
-        spans.add(const TextSpan(text: '\n'));
-      }
-
-      // Run spans
-      for (final run in para.runs) {
-        spans.add(TextSpan(
-          text: run.text,
-          style: TextStyle(
-            fontSize: (run.fontSize * scale).clamp(4.0, 200.0),
-            fontWeight: run.isBold ? FontWeight.bold : FontWeight.normal,
-            fontStyle: run.isItalic ? FontStyle.italic : FontStyle.normal,
-            decoration: run.textDecoration,
-            color: run.color,
-            fontFamily: run.fontFamily,
-            letterSpacing: run.letterSpacing != null ? run.letterSpacing! * scale : null,
-            height: para.lineSpacing > 0 ? para.lineSpacing : null,
-          ),
-        ));
-      }
-
-      // Paragraph separator (except last)
-      if (pi < elem.paragraphs.length - 1) {
-        spans.add(const TextSpan(text: '\n'));
-      }
-
-      if (para.spacingAfter > 0 && pi < elem.paragraphs.length - 1) {
-        spans.add(const TextSpan(text: '\n'));
-      }
+    if (elem.paragraphs.length == 1) {
+      final para = elem.paragraphs.first;
+      return RichText(
+        text: TextSpan(children: _buildParagraphSpans(para, scale)),
+        textAlign: para.align,
+        overflow: TextOverflow.clip,
+      );
     }
 
-    // All paragraphs share the alignment of the first paragraph
-    final align = elem.paragraphs.firstOrNull?.align ?? elem.align;
-
-    return RichText(
-      text: TextSpan(children: spans),
-      textAlign: align,
-      overflow: TextOverflow.clip,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: elem.paragraphs.map((para) {
+        return Padding(
+          padding: EdgeInsets.only(
+            top: (para.spacingBefore * scale).clamp(0.0, 40.0),
+            bottom: (para.spacingAfter * scale).clamp(0.0, 40.0),
+          ),
+          child: RichText(
+            text: TextSpan(children: _buildParagraphSpans(para, scale)),
+            textAlign: para.align,
+            overflow: TextOverflow.clip,
+          ),
+        );
+      }).toList(),
     );
+  }
+
+  List<InlineSpan> _buildParagraphSpans(TextParagraph para, double scale) {
+    return para.runs.map((run) {
+      return TextSpan(
+        text: run.text,
+        style: TextStyle(
+          fontSize: (run.fontSize * scale).clamp(4.0, 200.0),
+          fontWeight: run.isBold ? FontWeight.bold : FontWeight.normal,
+          fontStyle: run.isItalic ? FontStyle.italic : FontStyle.normal,
+          decoration: run.textDecoration,
+          color: run.color,
+          fontFamily: run.fontFamily,
+          letterSpacing: run.letterSpacing != null ? run.letterSpacing! * scale : null,
+          height: para.lineSpacing > 0 ? para.lineSpacing : null,
+        ),
+      );
+    }).toList();
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -437,7 +435,7 @@ class SlideCanvas extends StatelessWidget {
     return Image.memory(
       elem.imageBytes!,
       fit: BoxFit.fill,
-      errorBuilder: (_, __, ___) => Container(
+      errorBuilder: (context, error, stackTrace) => Container(
         color: Colors.grey.withAlpha(40),
         child: const Center(child: Icon(Icons.broken_image_outlined, color: Colors.grey)),
       ),

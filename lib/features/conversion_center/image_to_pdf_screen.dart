@@ -86,6 +86,7 @@ class _ImageToPdfScreenState extends State<ImageToPdfScreen> {
             fileSize: stat.size,
           ),
         );
+        if (!mounted) return;
         Navigator.pop(context);
         SaveSuccessDialog.show(context: context, filePath: savedPath);
       }

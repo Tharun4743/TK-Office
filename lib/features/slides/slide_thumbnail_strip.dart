@@ -150,7 +150,7 @@ class SlideThumbnailStrip extends StatelessWidget {
       return Image.memory(
         slide.backgroundImageBytes!,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => Container(color: slide.backgroundColor),
+        errorBuilder: (context, error, stackTrace) => Container(color: slide.backgroundColor),
       );
     }
 

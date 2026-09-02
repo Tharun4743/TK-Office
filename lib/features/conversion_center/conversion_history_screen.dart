@@ -83,7 +83,7 @@ class _ConversionHistoryScreenState extends State<ConversionHistoryScreen> {
               : ListView.separated(
                   padding: const EdgeInsets.all(16),
                   itemCount: _history.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  separatorBuilder: (context, index) => const Divider(height: 1),
                   itemBuilder: (context, index) {
                     final item = _history[index];
                     final fileExists = File(item.targetPath).existsSync();

@@ -98,6 +98,7 @@ class _PdfMergeSplitScreenState extends State<PdfMergeSplitScreen> {
             fileSize: stat.size,
           ),
         );
+        if (!mounted) return;
         Navigator.pop(context);
         SaveSuccessDialog.show(context: context, filePath: savedPath);
       }

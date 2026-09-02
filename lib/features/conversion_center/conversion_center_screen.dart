@@ -85,6 +85,7 @@ class _ConversionCenterScreenState extends State<ConversionCenterScreen> {
           isSuccess: true,
           fileSize: stat.size,
         );
+        if (!mounted) return;
         SaveSuccessDialog.show(context: context, filePath: savedPath);
       }
     } catch (e) {
@@ -132,6 +133,7 @@ class _ConversionCenterScreenState extends State<ConversionCenterScreen> {
           isSuccess: true,
           fileSize: stat.size,
         );
+        if (!mounted) return;
         SaveSuccessDialog.show(context: context, filePath: savedPath);
       }
     } catch (e) {
@@ -179,6 +181,7 @@ class _ConversionCenterScreenState extends State<ConversionCenterScreen> {
           isSuccess: true,
           fileSize: stat.size,
         );
+        if (!mounted) return;
         SaveSuccessDialog.show(context: context, filePath: savedPath);
       }
     } catch (e) {
@@ -264,6 +267,7 @@ class _ConversionCenterScreenState extends State<ConversionCenterScreen> {
           isSuccess: true,
           fileSize: stat.size,
         );
+        if (!mounted) return;
         SaveSuccessDialog.show(context: context, filePath: savedPath);
       }
     } catch (e) {
@@ -311,6 +315,7 @@ class _ConversionCenterScreenState extends State<ConversionCenterScreen> {
           isSuccess: true,
           fileSize: stat.size,
         );
+        if (!mounted) return;
         SaveSuccessDialog.show(context: context, filePath: savedPath);
       }
     } catch (e) {
@@ -358,6 +363,7 @@ class _ConversionCenterScreenState extends State<ConversionCenterScreen> {
           isSuccess: true,
           fileSize: stat.size,
         );
+        if (!mounted) return;
         SaveSuccessDialog.show(context: context, filePath: savedPath);
       }
     } catch (e) {
@@ -374,6 +380,8 @@ class _ConversionCenterScreenState extends State<ConversionCenterScreen> {
     if (result.isEmpty || result.first.path == null) return;
     final inPath = result.first.path!;
     final origSize = File(inPath).lengthSync();
+
+    if (!mounted) return;
 
     // Select Quality Mode
     final qualityMode = await showDialog<int>(
@@ -444,6 +452,7 @@ class _ConversionCenterScreenState extends State<ConversionCenterScreen> {
           isSuccess: true,
           fileSize: newSize,
         );
+        if (!mounted) return;
         SaveSuccessDialog.show(context: context, filePath: savedPath);
       }
     } catch (e) {
@@ -459,6 +468,8 @@ class _ConversionCenterScreenState extends State<ConversionCenterScreen> {
     final result = await FilePicker.pickFiles(type: FileType.custom, allowedExtensions: ['pdf']);
     if (result.isEmpty || result.first.path == null) return;
     final inPath = result.first.path!;
+
+    if (!mounted) return;
 
     final pwd = await TKDialogs.showNameInputDialog(
       context: context,
@@ -501,6 +512,7 @@ class _ConversionCenterScreenState extends State<ConversionCenterScreen> {
           isSuccess: true,
           fileSize: stat.size,
         );
+        if (!mounted) return;
         SaveSuccessDialog.show(context: context, filePath: savedPath);
       }
     } catch (e) {

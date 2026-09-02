@@ -116,6 +116,72 @@ class SheetsController extends ChangeNotifier {
     _markDirty();
   }
 
+  void mergeCells(int startRow, int startCol, int endRow, int endCol) {
+    if (activeSheet == null) return;
+    final r1 = startRow < endRow ? startRow : endRow;
+    final r2 = startRow > endRow ? startRow : endRow;
+    final c1 = startCol < endCol ? startCol : endCol;
+    final c2 = startCol > endCol ? startCol : endCol;
+
+    final colSpan = c2 - c1 + 1;
+    final rowSpan = r2 - r1 + 1;
+
+    final master = activeSheet!.getCell(r1, c1);
+    activeSheet!.setCell(
+      r1,
+      c1,
+      master.copyWith(
+        colSpan: colSpan,
+        rowSpan: rowSpan,
+        isMergedChild: false,
+        align: TextAlign.center,
+      ),
+    );
+
+    for (var r = r1; r <= r2; r++) {
+      for (var c = c1; c <= c2; c++) {
+        if (r != r1 || c != c1) {
+          final child = activeSheet!.getCell(r, c);
+          activeSheet!.setCell(
+            r,
+            c,
+            child.copyWith(isMergedChild: true, colSpan: 1, rowSpan: 1),
+          );
+        }
+      }
+    }
+    _markDirty();
+  }
+
+  void unmergeCell(int row, int col) {
+    if (activeSheet == null) return;
+    final master = activeSheet!.getCell(row, col);
+    if (master.colSpan <= 1 && master.rowSpan <= 1) return;
+
+    final colSpan = master.colSpan;
+    final rowSpan = master.rowSpan;
+
+    activeSheet!.setCell(
+      row,
+      col,
+      master.copyWith(colSpan: 1, rowSpan: 1, isMergedChild: false),
+    );
+
+    for (var r = row; r < row + rowSpan; r++) {
+      for (var c = col; c < col + colSpan; c++) {
+        if (r != row || c != col) {
+          final child = activeSheet!.getCell(r, c);
+          activeSheet!.setCell(
+            r,
+            c,
+            child.copyWith(isMergedChild: false, colSpan: 1, rowSpan: 1),
+          );
+        }
+      }
+    }
+    _markDirty();
+  }
+
   void switchSheet(int index) {
     if (_workbook == null || index < 0 || index >= _workbook!.sheets.length) return;
     _workbook!.activeSheetIndex = index;

@@ -533,6 +533,8 @@ class _PdfDirectEditorScreenState extends State<PdfDirectEditorScreen> {
                 TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
                 FilledButton(
                   onPressed: () async {
+                    final nav = Navigator.of(context);
+                    final messenger = ScaffoldMessenger.of(context);
                     Navigator.pop(ctx);
                     setState(() => _isSaving = true);
                     try {
@@ -556,14 +558,14 @@ class _PdfDirectEditorScreenState extends State<PdfDirectEditorScreen> {
                         tempOutputFile: tempOut,
                       );
 
-                      if (savedPath != null && mounted) {
-                        Navigator.pop(context, savedPath);
+                      if (!mounted) return;
+                      if (savedPath != null) {
+                        nav.pop(savedPath);
                       }
                     } catch (e) {
-                      if (mounted) {
-                        setState(() => _isSaving = false);
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-                      }
+                      if (!mounted) return;
+                      setState(() => _isSaving = false);
+                      messenger.showSnackBar(SnackBar(content: Text('Error: $e')));
                     }
                   },
                   child: const Text('Apply to Document'),
@@ -774,11 +776,13 @@ class _PdfDirectEditorScreenState extends State<PdfDirectEditorScreen> {
             icon: const Icon(Icons.view_module_rounded),
             tooltip: 'Manage Pages',
             onPressed: () async {
-              final res = await Navigator.of(context).push<String>(
+              final nav = Navigator.of(context);
+              final res = await nav.push<String>(
                 MaterialPageRoute(builder: (_) => PdfPagesManagerScreen(pdfPath: widget.pdfPath)),
               );
-              if (res != null && mounted) {
-                Navigator.pop(context, res);
+              if (!mounted) return;
+              if (res != null) {
+                nav.pop(res);
               }
             },
           ),

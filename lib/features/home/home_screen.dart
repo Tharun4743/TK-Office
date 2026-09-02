@@ -1326,7 +1326,7 @@ class _PdfThumbnailWidget extends StatelessWidget {
                         fit: BoxFit.contain,
                         cacheHeight: 600, // limit decoder memory
                         filterQuality: FilterQuality.medium,
-                        errorBuilder: (_, __, ___) =>
+                        errorBuilder: (context, error, stackTrace) =>
                             Icon(Icons.picture_as_pdf_rounded, size: 44, color: color),
                       ),
                     ),

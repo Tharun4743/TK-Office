@@ -48,13 +48,11 @@ class SpreadsheetService {
   }
 
   Future<void> saveWorkbook(WorkbookModel workbook) async {
-    if (workbook.filePath == null) {
-      workbook.filePath = await LocalStorageService.instance.generateUniqueFilePath(
-        baseName: workbook.title,
-        extension: '.xlsx',
-        category: DocumentCategory.spreadsheet,
-      );
-    }
+    workbook.filePath ??= await LocalStorageService.instance.generateUniqueFilePath(
+      baseName: workbook.title,
+      extension: '.xlsx',
+      category: DocumentCategory.spreadsheet,
+    );
 
     final file = File(workbook.filePath!);
     final ext = p.extension(workbook.filePath!).toLowerCase();
