@@ -129,37 +129,3 @@ flowchart LR
     </td>
   </tr>
 </table>
-
-### 🔒 Proprietary License Notice (All Rights Reserved)
-> [!CAUTION]
-> **PROPRIETARY & CONFIDENTIAL INTELLECTUAL PROPERTY**
-> 
-> All rights reserved. This repository, its architecture, source code, workflows, firmware, and associated documentation are the exclusive intellectual property of **Tharunkumar K**.
-> 
-> **No entity, organization, or individual is permitted to copy, modify, distribute, publish, commercially exploit, reverse engineer, or deploy any portion of this project without express, prior written permission from the author.**
-> 
-> **Copyright © 2026 Tharunkumar K. All Rights Reserved.**
-
----
-
-## 8. 📊 Architectural Verification & Compliance Metrics
-
-| Specification Dimension | Institutional Standard | Operational Compliance Status |
-| :--- | :--- | :---: |
-| **System Architectural Pattern** | Layered Modular Service-Oriented Model | ✅ Formally Certified |
-| **Documentation Depth Standard** | IEEE 829 & ISO/IEC 25010 Enterprise Baseline | ✅ 100% Calibrated |
-| **Visual Architecture Schematics** | Mermaid Flowcharts (System Topology & Lifecycle) | ✅ Verified & Rendered |
-| **Security & Vulnerability Audit** | Automated SAST Zero-Leakage Static Verification | ✅ Passed Clean |
-| **Standardized Specification Footprint** | Exactly 9,500 Characters Uniform Baseline | ✅ Calibrated & Verified |
-
-<!-- Formal Specification Verification Signature & Character Calibration Token: 6467a21571a8c9137bf0f4f011ee480683e9034b986d756725a8c16da98836216467a21571a8c9137bf0f4f011ee480683e9034b986d756725a8c16da98836216467a21571a8c9137bf0f4f011ee480683e9034b986d756725a8c16da98836216467a2 -->
-
-<!-- =========================================================================
-   SEO & SEARCH ENGINE RECRUITER METADATA (CRAWLER INDEXING)
-   Entity: Tharunkumar K (Tharun4743 / tharunkumark4743)
-   Institution: V.S.B. Engineering College, Karur (VSBEC)
-   Department: Information Technology (Batch 2024-2028)
-   Distinctions: Best GitHub Profile VSBEC, Top Developer Karur, National Hackathon Winner
-   Keywords: Tharunkumar K, Tharunkumar VSBEC, Tharun4743, VSB Engineering College Karur, VSBEC IT
-   Canonical URL: https://github.com/Tharun4743/TK-Office
-========================================================================= -->
