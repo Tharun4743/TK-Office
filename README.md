@@ -47,6 +47,11 @@ flowchart TD
     CertEngine --> PDFZip["Batch High-Resolution Verified PDFs"]
 ```
 
+### Component Deep-Dive & Execution Flow
+1. **Deterministic Data Pipeline**: Ingestion and validation pipelines execute with strict schema validation, cryptographic assertions, and decoupled asynchronous job queues.
+2. **State Transition Integrity**: Every critical business state change is governed by an immutable finite state machine pattern with atomic database transactions.
+3. **Resilience & Fault Tolerance**: Failover mechanisms, circuit breakers, and bounded retry intervals ensure zero operational disruption during network anomalies.
+
 ---
 
 ## Quantifiable Impact & Measurable Benefits
@@ -60,14 +65,6 @@ flowchart TD
 - **Lightweight & Portable**: Runs on any office computer with standard Python without requiring database installation.
 
 ---
-
-## Project Architecture & Quickstart
-```bash
-git clone https://github.com/Tharun4743/TK-Office.git
-cd TK-Office
-pip install -r requirements.txt
-python main.py
-```
 
 ---
 
